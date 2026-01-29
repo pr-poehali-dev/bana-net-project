@@ -399,58 +399,58 @@ const Index = () => {
   );
 
   const renderSearch = () => (
-    <div className="min-h-screen pt-24 pb-16">
+    <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold mb-8 gradient-text">Поиск отзывов</h1>
+          <h1 className="text-2xl md:text-4xl font-bold mb-6 md:mb-8 gradient-text">Поиск отзывов</h1>
           
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Найти отзыв</CardTitle>
-              <CardDescription>Поиск по артикулу, ссылке на товар или имени продавца</CardDescription>
+          <Card className="mb-6 md:mb-8">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg md:text-xl">Найти отзыв</CardTitle>
+              <CardDescription className="text-sm">Поиск по артикулу, ссылке на товар или имени продавца</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 md:space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Артикул товара</label>
-                <Input placeholder="Например: 12345678" />
+                <Input placeholder="Например: 12345678" className="h-11 md:h-10" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-2 block">Ссылка на товар</label>
-                <Input placeholder="https://wildberries.ru/catalog/..." />
+                <Input placeholder="https://wildberries.ru/catalog/..." className="h-11 md:h-10" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-2 block">Имя продавца</label>
-                <Input placeholder="ООО 'Название компании'" />
+                <Input placeholder="ООО 'Название компании'" className="h-11 md:h-10" />
               </div>
-              <Button className="w-full gradient-bg">
+              <Button className="w-full gradient-bg h-12 md:h-10 text-base md:text-sm">
                 <Icon name="Search" className="w-4 h-4 mr-2" />
                 Найти отзывы
               </Button>
             </CardContent>
           </Card>
 
-          <p className="text-center text-muted-foreground">Введите данные для поиска отзывов</p>
+          <p className="text-center text-sm md:text-base text-muted-foreground">Введите данные для поиска отзывов</p>
         </div>
       </div>
     </div>
   );
 
   const renderAddReview = () => (
-    <div className="min-h-screen pt-24 pb-16">
+    <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-4xl font-bold mb-8 gradient-text">Добавить отзыв</h1>
+          <h1 className="text-2xl md:text-4xl font-bold mb-6 md:mb-8 gradient-text">Добавить отзыв</h1>
           
           <Card>
-            <CardHeader>
-              <CardTitle>Новый отзыв</CardTitle>
-              <CardDescription>Расскажите о своем опыте покупки</CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg md:text-xl">Новый отзыв</CardTitle>
+              <CardDescription className="text-sm">Расскажите о своем опыте покупки</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 md:space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Маркетплейс *</label>
                 <Select>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 md:h-10">
                     <SelectValue placeholder="Выберите маркетплейс" />
                   </SelectTrigger>
                   <SelectContent>
@@ -462,24 +462,24 @@ const Index = () => {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Артикул товара *</label>
-                <Input placeholder="12345678" />
+                <Input placeholder="12345678" className="h-11 md:h-10" />
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Ссылка на товар *</label>
-                <Input placeholder="https://wildberries.ru/catalog/..." />
+                <Input placeholder="https://wildberries.ru/catalog/..." className="h-11 md:h-10" />
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Продавец (необязательно)</label>
-                <Input placeholder="ООО 'Название компании'" />
+                <Input placeholder="ООО 'Название компании'" className="h-11 md:h-10" />
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Оценка *</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {[1, 2, 3, 4, 5].map((rating) => (
-                    <Button key={rating} variant="outline" size="sm">
+                    <Button key={rating} variant="outline" size="sm" className="h-10 flex-1 min-w-[60px] md:flex-none">
                       <Icon name="Star" className="w-4 h-4 mr-1" />
                       {rating}
                     </Button>
@@ -491,19 +491,20 @@ const Index = () => {
                 <label className="text-sm font-medium mb-2 block">Ваш отзыв *</label>
                 <Textarea 
                   placeholder="Опишите свою ситуацию, проблему с товаром или продавцом..." 
-                  className="min-h-[150px]"
+                  className="min-h-[120px] md:min-h-[150px] text-base"
                 />
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Скриншоты (для модерации)</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 md:p-8 text-center cursor-pointer hover:border-primary transition-colors">
                   <Icon name="Upload" className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Загрузите скрины заблокированного отзыва</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Загрузите скрины заблокированного отзыва</p>
+                  <p className="text-xs text-muted-foreground mt-1">Нажмите для выбора файлов</p>
                 </div>
               </div>
 
-              <Button className="w-full gradient-bg" size="lg">
+              <Button className="w-full gradient-bg h-12 md:h-11 text-base md:text-sm" size="lg">
                 <Icon name="Send" className="w-4 h-4 mr-2" />
                 Отправить на модерацию
               </Button>
