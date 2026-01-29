@@ -120,7 +120,7 @@ const Index = () => {
                   <div className="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
                     <span className="text-white font-bold text-lg">🚫</span>
                   </div>
-                  <span className="gradient-text">БАНа.Нет</span>
+                  <span className="gradient-text">BANA.Net</span>
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-4 mt-8">
