@@ -221,7 +221,7 @@ const Index = () => {
                 <Icon name="MessageSquarePlus" className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 Написать отзыв
               </Button>
-              <Button onClick={() => handleNavigation('reviews')} size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-base md:text-lg px-6 md:px-8 py-5 md:py-6 w-full sm:w-auto">
+              <Button onClick={() => handleNavigation('reviews')} size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-primary transition-all text-base md:text-lg px-6 md:px-8 py-5 md:py-6 w-full sm:w-auto font-semibold">
                 <Icon name="Search" className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 Найти отзывы
               </Button>
@@ -289,14 +289,9 @@ const Index = () => {
                           </CardDescription>
                         </div>
                       </div>
-                      <div className="flex gap-0.5 md:gap-1 flex-shrink-0">
-                        {[...Array(5)].map((_, i) => (
-                          <Icon
-                            key={i}
-                            name="Star"
-                            className={`w-3 h-3 md:w-4 md:h-4 ${i < review.rating ? 'fill-accent text-accent' : 'text-gray-300'}`}
-                          />
-                        ))}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Icon name="ThumbsDown" className="w-4 h-4 md:w-5 md:h-5 text-destructive fill-destructive" />
+                        <span className="text-sm md:text-base font-semibold text-destructive">{review.rating}/5</span>
                       </div>
                     </div>
                   </CardHeader>
@@ -332,9 +327,19 @@ const Index = () => {
     <div className="min-h-screen pt-24 pb-16">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold mb-8 gradient-text">Все отзывы</h1>
+          <h1 className="text-2xl md:text-4xl font-bold mb-6 md:mb-8 gradient-text">Все отзывы</h1>
           
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+          <div className="mb-6 md:mb-8">
+            <div className="relative">
+              <Icon name="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input 
+                placeholder="Поиск по артикулу, продавцу или тексту отзыва..." 
+                className="pl-10 h-12 md:h-11"
+              />
+            </div>
+          </div>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6 md:mb-8">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="all">Все</TabsTrigger>
               <TabsTrigger value="wildberries">Wildberries</TabsTrigger>
@@ -350,43 +355,38 @@ const Index = () => {
               )
               .map((review) => (
                 <Card key={review.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback className="gradient-bg text-white">{review.author[0]}</AvatarFallback>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                        <Avatar className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
+                          <AvatarFallback className="gradient-bg text-white text-sm">{review.author[0]}</AvatarFallback>
                         </Avatar>
-                        <div>
-                          <CardTitle className="text-lg">{review.author}</CardTitle>
-                          <CardDescription className="flex items-center gap-2">
-                            <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'}>
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base md:text-lg truncate">{review.author}</CardTitle>
+                          <CardDescription className="flex items-center gap-1 md:gap-2 flex-wrap">
+                            <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'} className="text-xs">
                               {review.marketplace}
                             </Badge>
                             <span className="text-xs">{review.date}</span>
                           </CardDescription>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Icon
-                            key={i}
-                            name="Star"
-                            className={`w-4 h-4 ${i < review.rating ? 'fill-accent text-accent' : 'text-gray-300'}`}
-                          />
-                        ))}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Icon name="ThumbsDown" className="w-4 h-4 md:w-5 md:h-5 text-destructive fill-destructive" />
+                        <span className="text-sm md:text-base font-semibold text-destructive">{review.rating}/5</span>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-foreground mb-4">{review.text}</p>
-                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                  <CardContent className="pt-0">
+                    <p className="text-sm md:text-base text-foreground mb-3 md:mb-4">{review.text}</p>
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs md:text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <Icon name="Package" className="w-4 h-4" />
-                        <span>Артикул: {review.productArticle}</span>
+                        <Icon name="Package" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                        <span className="truncate">Артикул: {review.productArticle}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Icon name="Store" className="w-4 h-4" />
-                        <span>Продавец: {review.seller}</span>
+                        <Icon name="Store" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                        <span className="truncate">Продавец: {review.seller}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -476,11 +476,12 @@ const Index = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Оценка *</label>
+                <label className="text-sm font-medium mb-2 block">Оценка недовольства *</label>
+                <CardDescription className="text-xs mb-3">От 1 (слабо) до 5 (крайне недоволен)</CardDescription>
                 <div className="flex gap-2 flex-wrap">
                   {[1, 2, 3, 4, 5].map((rating) => (
-                    <Button key={rating} variant="outline" size="sm" className="h-10 flex-1 min-w-[60px] md:flex-none">
-                      <Icon name="Star" className="w-4 h-4 mr-1" />
+                    <Button key={rating} variant="outline" size="sm" className="h-10 flex-1 min-w-[60px] md:flex-none hover:bg-destructive hover:text-white hover:border-destructive">
+                      <Icon name="ThumbsDown" className="w-4 h-4 mr-1" />
                       {rating}
                     </Button>
                   ))}
