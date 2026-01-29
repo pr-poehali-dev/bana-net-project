@@ -477,7 +477,7 @@ const Index = () => {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Оценка недовольства *</label>
-                <CardDescription className="text-xs mb-3">От 1 (слабо) до 5 (крайне недоволен)</CardDescription>
+                <CardDescription className="text-xs mb-3">От 1 (немного недоволен) до 5 (крайне недоволен)</CardDescription>
                 <div className="flex gap-2 flex-wrap">
                   {[1, 2, 3, 4, 5].map((rating) => (
                     <Button key={rating} variant="outline" size="sm" className="h-10 flex-1 min-w-[60px] md:flex-none hover:bg-destructive hover:text-white hover:border-destructive">
