@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import Icon from '@/components/ui/icon';
 
 const mockReviews = [
@@ -51,6 +52,7 @@ const mockReviews = [
 const Index = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [currentView, setCurrentView] = useState<'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'rules' | 'support'>('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const stats = {
     totalReviews: 2847,
@@ -58,48 +60,138 @@ const Index = () => {
     publishedToday: 47
   };
 
+  const handleNavigation = (view: 'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'rules' | 'support') => {
+    setCurrentView(view);
+    setMobileMenuOpen(false);
+  };
+
   const renderNavigation = () => (
     <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView('home')}>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleNavigation('home')}>
             <div className="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
               <span className="text-white font-bold text-lg">🚫</span>
             </div>
-            <h1 className="text-2xl font-bold gradient-text">БАНа.Нет</h1>
+            <h1 className="text-xl md:text-2xl font-bold gradient-text">БАНа.Нет</h1>
           </div>
           
           <div className="hidden md:flex items-center gap-6">
-            <button onClick={() => setCurrentView('home')} className="text-foreground hover:text-primary transition-colors font-medium">
+            <button onClick={() => handleNavigation('home')} className="text-foreground hover:text-primary transition-colors font-medium">
               Главная
             </button>
-            <button onClick={() => setCurrentView('reviews')} className="text-foreground hover:text-primary transition-colors font-medium">
+            <button onClick={() => handleNavigation('reviews')} className="text-foreground hover:text-primary transition-colors font-medium">
               Отзывы
             </button>
-            <button onClick={() => setCurrentView('search')} className="text-foreground hover:text-primary transition-colors font-medium">
+            <button onClick={() => handleNavigation('search')} className="text-foreground hover:text-primary transition-colors font-medium">
               Поиск
             </button>
-            <button onClick={() => setCurrentView('add')} className="text-foreground hover:text-primary transition-colors font-medium">
+            <button onClick={() => handleNavigation('add')} className="text-foreground hover:text-primary transition-colors font-medium">
               Добавить отзыв
             </button>
-            <button onClick={() => setCurrentView('rules')} className="text-foreground hover:text-primary transition-colors font-medium">
+            <button onClick={() => handleNavigation('rules')} className="text-foreground hover:text-primary transition-colors font-medium">
               Правила
             </button>
-            <button onClick={() => setCurrentView('support')} className="text-foreground hover:text-primary transition-colors font-medium">
+            <button onClick={() => handleNavigation('support')} className="text-foreground hover:text-primary transition-colors font-medium">
               Поддержка
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button onClick={() => setCurrentView('profile')} variant="outline" size="sm">
+          <div className="hidden md:flex items-center gap-3">
+            <Button onClick={() => handleNavigation('profile')} variant="outline" size="sm">
               <Icon name="User" className="w-4 h-4 mr-2" />
               Профиль
             </Button>
-            <Button onClick={() => setCurrentView('admin')} size="sm" className="gradient-bg">
+            <Button onClick={() => handleNavigation('admin')} size="sm" className="gradient-bg">
               <Icon name="Shield" className="w-4 h-4 mr-2" />
               Админ
             </Button>
           </div>
+
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon">
+                <Icon name="Menu" className="w-6 h-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <div className="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">🚫</span>
+                  </div>
+                  <span className="gradient-text">БАНа.Нет</span>
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-4 mt-8">
+                <Button 
+                  onClick={() => handleNavigation('home')} 
+                  variant="ghost" 
+                  className="justify-start text-lg h-12"
+                >
+                  <Icon name="Home" className="w-5 h-5 mr-3" />
+                  Главная
+                </Button>
+                <Button 
+                  onClick={() => handleNavigation('reviews')} 
+                  variant="ghost" 
+                  className="justify-start text-lg h-12"
+                >
+                  <Icon name="MessageSquare" className="w-5 h-5 mr-3" />
+                  Отзывы
+                </Button>
+                <Button 
+                  onClick={() => handleNavigation('search')} 
+                  variant="ghost" 
+                  className="justify-start text-lg h-12"
+                >
+                  <Icon name="Search" className="w-5 h-5 mr-3" />
+                  Поиск
+                </Button>
+                <Button 
+                  onClick={() => handleNavigation('add')} 
+                  variant="ghost" 
+                  className="justify-start text-lg h-12"
+                >
+                  <Icon name="MessageSquarePlus" className="w-5 h-5 mr-3" />
+                  Добавить отзыв
+                </Button>
+                <Button 
+                  onClick={() => handleNavigation('rules')} 
+                  variant="ghost" 
+                  className="justify-start text-lg h-12"
+                >
+                  <Icon name="BookOpen" className="w-5 h-5 mr-3" />
+                  Правила
+                </Button>
+                <Button 
+                  onClick={() => handleNavigation('support')} 
+                  variant="ghost" 
+                  className="justify-start text-lg h-12"
+                >
+                  <Icon name="HelpCircle" className="w-5 h-5 mr-3" />
+                  Поддержка
+                </Button>
+                <div className="border-t pt-4 mt-4">
+                  <Button 
+                    onClick={() => handleNavigation('profile')} 
+                    variant="outline" 
+                    className="w-full justify-start text-lg h-12 mb-3"
+                  >
+                    <Icon name="User" className="w-5 h-5 mr-3" />
+                    Профиль
+                  </Button>
+                  <Button 
+                    onClick={() => handleNavigation('admin')} 
+                    className="w-full justify-start text-lg h-12 gradient-bg"
+                  >
+                    <Icon name="Shield" className="w-5 h-5 mr-3" />
+                    Админ-панель
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>
