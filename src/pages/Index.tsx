@@ -1,12 +1,673 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Icon from '@/components/ui/icon';
+
+const mockReviews = [
+  {
+    id: 1,
+    marketplace: 'Wildberries',
+    productArticle: '12345678',
+    productLink: 'https://wildberries.ru/catalog/12345678',
+    seller: 'ООО "Качественные товары"',
+    author: 'Мария К.',
+    rating: 1,
+    text: 'Товар не соответствует описанию. Качество ужасное, вернуть не получилось. Мой честный отзыв заблокировали на площадке.',
+    date: '2024-01-15',
+    status: 'published'
+  },
+  {
+    id: 2,
+    marketplace: 'OZON',
+    productArticle: '87654321',
+    productLink: 'https://ozon.ru/product/87654321',
+    seller: 'ИП Иванов',
+    author: 'Алексей П.',
+    rating: 2,
+    text: 'Продавец не отправил товар вовремя. Поддержка игнорирует. Отзыв удалили после жалобы продавца.',
+    date: '2024-01-20',
+    status: 'published'
+  },
+  {
+    id: 3,
+    marketplace: 'Wildberries',
+    productArticle: '11223344',
+    productLink: 'https://wildberries.ru/catalog/11223344',
+    seller: 'ООО "МегаТорг"',
+    author: 'Елена С.',
+    rating: 1,
+    text: 'Пришел совершенно другой товар. Фото не соответствуют действительности. Мой негативный отзыв не прошел модерацию.',
+    date: '2024-01-25',
+    status: 'published'
+  }
+];
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
+  const [activeTab, setActiveTab] = useState('all');
+  const [currentView, setCurrentView] = useState<'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'rules' | 'support'>('home');
+
+  const stats = {
+    totalReviews: 2847,
+    totalUsers: 1523,
+    publishedToday: 47
+  };
+
+  const renderNavigation = () => (
+    <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-50">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView('home')}>
+            <div className="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-lg">🚫</span>
+            </div>
+            <h1 className="text-2xl font-bold gradient-text">БАНа.Нет</h1>
+          </div>
+          
+          <div className="hidden md:flex items-center gap-6">
+            <button onClick={() => setCurrentView('home')} className="text-foreground hover:text-primary transition-colors font-medium">
+              Главная
+            </button>
+            <button onClick={() => setCurrentView('reviews')} className="text-foreground hover:text-primary transition-colors font-medium">
+              Отзывы
+            </button>
+            <button onClick={() => setCurrentView('search')} className="text-foreground hover:text-primary transition-colors font-medium">
+              Поиск
+            </button>
+            <button onClick={() => setCurrentView('add')} className="text-foreground hover:text-primary transition-colors font-medium">
+              Добавить отзыв
+            </button>
+            <button onClick={() => setCurrentView('rules')} className="text-foreground hover:text-primary transition-colors font-medium">
+              Правила
+            </button>
+            <button onClick={() => setCurrentView('support')} className="text-foreground hover:text-primary transition-colors font-medium">
+              Поддержка
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button onClick={() => setCurrentView('profile')} variant="outline" size="sm">
+              <Icon name="User" className="w-4 h-4 mr-2" />
+              Профиль
+            </Button>
+            <Button onClick={() => setCurrentView('admin')} size="sm" className="gradient-bg">
+              <Icon name="Shield" className="w-4 h-4 mr-2" />
+              Админ
+            </Button>
+          </div>
+        </div>
       </div>
+    </nav>
+  );
+
+  const renderHome = () => (
+    <div className="min-h-screen pt-16">
+      <section className="gradient-bg text-white py-20 animate-fade-in">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-block mb-6 animate-scale-in">
+              <Badge className="bg-white/20 text-white border-white/30 text-lg px-6 py-2">
+                🎯 Платформа честных отзывов
+              </Badge>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-slide-up">
+              Твой голос важен!
+            </h1>
+            <p className="text-xl md:text-2xl mb-8 text-white/90 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              Публикуй отзывы, которые заблокировали маркетплейсы.<br />
+              Помогай другим избежать плохих покупок.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
+              <Button onClick={() => setCurrentView('add')} size="lg" className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6">
+                <Icon name="MessageSquarePlus" className="w-5 h-5 mr-2" />
+                Написать отзыв
+              </Button>
+              <Button onClick={() => setCurrentView('reviews')} size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8 py-6">
+                <Icon name="Search" className="w-5 h-5 mr-2" />
+                Найти отзывы
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Icon name="MessageSquare" className="w-8 h-8 text-white" />
+                </div>
+                <CardTitle className="text-4xl font-bold gradient-text">{stats.totalReviews}</CardTitle>
+                <CardDescription className="text-lg">Опубликовано отзывов</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: '0.1s' }}>
+              <CardHeader>
+                <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Icon name="Users" className="w-8 h-8 text-white" />
+                </div>
+                <CardTitle className="text-4xl font-bold gradient-text">{stats.totalUsers}</CardTitle>
+                <CardDescription className="text-lg">Активных пользователей</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: '0.2s' }}>
+              <CardHeader>
+                <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Icon name="TrendingUp" className="w-8 h-8 text-white" />
+                </div>
+                <CardTitle className="text-4xl font-bold gradient-text">{stats.publishedToday}</CardTitle>
+                <CardDescription className="text-lg">Новых за сегодня</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-4xl font-bold text-center mb-12 gradient-text">Последние отзывы</h2>
+            <div className="space-y-6">
+              {mockReviews.map((review, index) => (
+                <Card key={review.id} className="animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: `${index * 0.1}s` }}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback className="gradient-bg text-white">{review.author[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-lg">{review.author}</CardTitle>
+                          <CardDescription className="flex items-center gap-2">
+                            <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'}>
+                              {review.marketplace}
+                            </Badge>
+                            <span className="text-xs">{review.date}</span>
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Icon
+                            key={i}
+                            name="Star"
+                            className={`w-4 h-4 ${i < review.rating ? 'fill-accent text-accent' : 'text-gray-300'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-foreground mb-4">{review.text}</p>
+                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Icon name="Package" className="w-4 h-4" />
+                        <span>Артикул: {review.productArticle}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Icon name="Store" className="w-4 h-4" />
+                        <span>Продавец: {review.seller}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Button onClick={() => setCurrentView('reviews')} size="lg" variant="outline">
+                Показать все отзывы
+                <Icon name="ArrowRight" className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderReviews = () => (
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8 gradient-text">Все отзывы</h1>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="all">Все</TabsTrigger>
+              <TabsTrigger value="wildberries">Wildberries</TabsTrigger>
+              <TabsTrigger value="ozon">OZON</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="space-y-6">
+            {mockReviews
+              .filter(review => 
+                activeTab === 'all' || 
+                review.marketplace.toLowerCase() === activeTab
+              )
+              .map((review) => (
+                <Card key={review.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback className="gradient-bg text-white">{review.author[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-lg">{review.author}</CardTitle>
+                          <CardDescription className="flex items-center gap-2">
+                            <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'}>
+                              {review.marketplace}
+                            </Badge>
+                            <span className="text-xs">{review.date}</span>
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Icon
+                            key={i}
+                            name="Star"
+                            className={`w-4 h-4 ${i < review.rating ? 'fill-accent text-accent' : 'text-gray-300'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-foreground mb-4">{review.text}</p>
+                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Icon name="Package" className="w-4 h-4" />
+                        <span>Артикул: {review.productArticle}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Icon name="Store" className="w-4 h-4" />
+                        <span>Продавец: {review.seller}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSearch = () => (
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8 gradient-text">Поиск отзывов</h1>
+          
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Найти отзыв</CardTitle>
+              <CardDescription>Поиск по артикулу, ссылке на товар или имени продавца</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Артикул товара</label>
+                <Input placeholder="Например: 12345678" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Ссылка на товар</label>
+                <Input placeholder="https://wildberries.ru/catalog/..." />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Имя продавца</label>
+                <Input placeholder="ООО 'Название компании'" />
+              </div>
+              <Button className="w-full gradient-bg">
+                <Icon name="Search" className="w-4 h-4 mr-2" />
+                Найти отзывы
+              </Button>
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-muted-foreground">Введите данные для поиска отзывов</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAddReview = () => (
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8 gradient-text">Добавить отзыв</h1>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Новый отзыв</CardTitle>
+              <CardDescription>Расскажите о своем опыте покупки</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Маркетплейс *</label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите маркетплейс" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wildberries">Wildberries</SelectItem>
+                    <SelectItem value="ozon">OZON</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Артикул товара *</label>
+                <Input placeholder="12345678" />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Ссылка на товар *</label>
+                <Input placeholder="https://wildberries.ru/catalog/..." />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Продавец (необязательно)</label>
+                <Input placeholder="ООО 'Название компании'" />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Оценка *</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <Button key={rating} variant="outline" size="sm">
+                      <Icon name="Star" className="w-4 h-4 mr-1" />
+                      {rating}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Ваш отзыв *</label>
+                <Textarea 
+                  placeholder="Опишите свою ситуацию, проблему с товаром или продавцом..." 
+                  className="min-h-[150px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Скриншоты (для модерации)</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <Icon name="Upload" className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Загрузите скрины заблокированного отзыва</p>
+                </div>
+              </div>
+
+              <Button className="w-full gradient-bg" size="lg">
+                <Icon name="Send" className="w-4 h-4 mr-2" />
+                Отправить на модерацию
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderProfile = () => (
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8 gradient-text">Профиль</h1>
+          
+          <div className="grid gap-6 md:grid-cols-3 mb-8">
+            <Card>
+              <CardHeader className="text-center">
+                <Avatar className="w-20 h-20 mx-auto mb-4">
+                  <AvatarFallback className="gradient-bg text-white text-2xl">ИП</AvatarFallback>
+                </Avatar>
+                <CardTitle>Иван Петров</CardTitle>
+                <CardDescription>@ivan_petrov</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle className="text-3xl gradient-text">12</CardTitle>
+                <CardDescription>Опубликовано отзывов</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle className="text-3xl gradient-text">3</CardTitle>
+                <CardDescription>На модерации</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Мои отзывы</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center py-8">У вас пока нет опубликованных отзывов</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAdmin = () => (
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center">
+              <Icon name="Shield" className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold gradient-text">Админ-панель</h1>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl gradient-text">8</CardTitle>
+                <CardDescription>Ожидают модерации</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl gradient-text">2847</CardTitle>
+                <CardDescription>Всего отзывов</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl gradient-text">1523</CardTitle>
+                <CardDescription>Пользователей</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="reviews" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="reviews">Модерация отзывов</TabsTrigger>
+              <TabsTrigger value="users">Пользователи</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="reviews" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Отзывы на модерации</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-center py-8">Нет отзывов на модерации</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="users" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Управление пользователями</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-center py-8">Список пользователей</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderRules = () => (
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8 gradient-text">Правила публикации</h1>
+          
+          <Card>
+            <CardContent className="pt-6 space-y-6">
+              <div>
+                <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <Icon name="CheckCircle" className="w-5 h-5 text-primary" />
+                  Что можно публиковать
+                </h3>
+                <ul className="space-y-2 text-muted-foreground ml-7">
+                  <li>✓ Честные отзывы о товарах и продавцах</li>
+                  <li>✓ Отзывы, заблокированные на маркетплейсах</li>
+                  <li>✓ Описание реальных проблем с покупками</li>
+                  <li>✓ Конструктивную критику</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <Icon name="XCircle" className="w-5 h-5 text-destructive" />
+                  Что запрещено
+                </h3>
+                <ul className="space-y-2 text-muted-foreground ml-7">
+                  <li>✗ Оскорбления и нецензурная лексика</li>
+                  <li>✗ Ложная информация</li>
+                  <li>✗ Спам и реклама</li>
+                  <li>✗ Накрутка рейтингов</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <Icon name="Info" className="w-5 h-5 text-secondary" />
+                  Процесс модерации
+                </h3>
+                <p className="text-muted-foreground ml-7">
+                  Все отзывы проходят проверку модераторами в течение 24-48 часов. 
+                  Для подтверждения необходимы скриншоты заблокированного отзыва с маркетплейса.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSupport = () => (
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8 gradient-text">Поддержка и контакты</h1>
+          
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Mail" className="w-5 h-5 text-primary" />
+                  Email
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <a href="mailto:support@bana.net" className="text-primary hover:underline">
+                  support@bana.net
+                </a>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="MessageCircle" className="w-5 h-5 text-secondary" />
+                  Telegram
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <a href="https://t.me/bana_support" className="text-primary hover:underline">
+                  @bana_support
+                </a>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Часто задаваемые вопросы</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">Как добавить отзыв?</h4>
+                  <p className="text-muted-foreground">
+                    Перейдите в раздел "Добавить отзыв", заполните все обязательные поля и прикрепите скриншоты.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Сколько времени занимает модерация?</h4>
+                  <p className="text-muted-foreground">
+                    Обычно 24-48 часов. В редких случаях может занять до 3-х рабочих дней.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Можно ли удалить свой отзыв?</h4>
+                  <p className="text-muted-foreground">
+                    Да, в личном кабинете есть возможность удалить или отредактировать свои отзывы.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white">
+      {renderNavigation()}
+      {currentView === 'home' && renderHome()}
+      {currentView === 'reviews' && renderReviews()}
+      {currentView === 'search' && renderSearch()}
+      {currentView === 'add' && renderAddReview()}
+      {currentView === 'profile' && renderProfile()}
+      {currentView === 'admin' && renderAdmin()}
+      {currentView === 'rules' && renderRules()}
+      {currentView === 'support' && renderSupport()}
+      
+      <footer className="bg-gray-50 border-t border-gray-200 py-8">
+        <div className="container mx-auto px-4 text-center text-muted-foreground">
+          <p className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-2xl">🚫</span>
+            <span className="font-bold gradient-text">БАНа.Нет</span>
+          </p>
+          <p className="text-sm">© 2024 Платформа честных отзывов</p>
+        </div>
+      </footer>
     </div>
   );
 };
