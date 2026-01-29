@@ -199,28 +199,30 @@ const Index = () => {
 
   const renderHome = () => (
     <div className="min-h-screen pt-16">
-      <section className="gradient-bg text-white py-20 animate-fade-in">
+      <section className="gradient-bg text-white py-12 md:py-20 animate-fade-in overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-block mb-6 animate-scale-in">
-              <Badge className="bg-white/20 text-white border-white/30 text-lg px-6 py-2">
+            <div className="inline-block mb-4 md:mb-6 animate-scale-in">
+              <Badge className="bg-white/20 text-white border-white/30 text-sm md:text-lg px-4 md:px-6 py-1.5 md:py-2">
                 🎯 Платформа честных отзывов
               </Badge>
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-slide-up">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 md:mb-6 animate-slide-up px-4">
               Твой голос важен!
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-white/90 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-              Публикуй отзывы, которые заблокировали маркетплейсы.<br />
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-6 md:mb-8 text-white/90 animate-slide-up px-4" style={{ animationDelay: '0.1s' }}>
+              Публикуй отзывы, которые заблокировали маркетплейсы.
+              <br className="hidden sm:block" />
+              <span className="hidden sm:inline"> </span>
               Помогай другим избежать плохих покупок.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <Button onClick={() => setCurrentView('add')} size="lg" className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6">
-                <Icon name="MessageSquarePlus" className="w-5 h-5 mr-2" />
+            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center animate-slide-up px-4" style={{ animationDelay: '0.2s' }}>
+              <Button onClick={() => handleNavigation('add')} size="lg" className="bg-white text-primary hover:bg-white/90 text-base md:text-lg px-6 md:px-8 py-5 md:py-6 w-full sm:w-auto">
+                <Icon name="MessageSquarePlus" className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 Написать отзыв
               </Button>
-              <Button onClick={() => setCurrentView('reviews')} size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8 py-6">
-                <Icon name="Search" className="w-5 h-5 mr-2" />
+              <Button onClick={() => handleNavigation('reviews')} size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-base md:text-lg px-6 md:px-8 py-5 md:py-6 w-full sm:w-auto">
+                <Icon name="Search" className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 Найти отзывы
               </Button>
             </div>
@@ -228,94 +230,94 @@ const Index = () => {
         </div>
       </section>
 
-      <section className="py-16 bg-gray-50">
+      <section className="py-8 md:py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
             <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Icon name="MessageSquare" className="w-8 h-8 text-white" />
+              <CardHeader className="py-4 md:py-6">
+                <div className="w-12 h-12 md:w-16 md:h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+                  <Icon name="MessageSquare" className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
-                <CardTitle className="text-4xl font-bold gradient-text">{stats.totalReviews}</CardTitle>
-                <CardDescription className="text-lg">Опубликовано отзывов</CardDescription>
+                <CardTitle className="text-2xl md:text-4xl font-bold gradient-text">{stats.totalReviews}</CardTitle>
+                <CardDescription className="text-sm md:text-lg">Опубликовано отзывов</CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: '0.1s' }}>
-              <CardHeader>
-                <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Icon name="Users" className="w-8 h-8 text-white" />
+              <CardHeader className="py-4 md:py-6">
+                <div className="w-12 h-12 md:w-16 md:h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+                  <Icon name="Users" className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
-                <CardTitle className="text-4xl font-bold gradient-text">{stats.totalUsers}</CardTitle>
-                <CardDescription className="text-lg">Активных пользователей</CardDescription>
+                <CardTitle className="text-2xl md:text-4xl font-bold gradient-text">{stats.totalUsers}</CardTitle>
+                <CardDescription className="text-sm md:text-lg">Активных пользователей</CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: '0.2s' }}>
-              <CardHeader>
-                <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Icon name="TrendingUp" className="w-8 h-8 text-white" />
+              <CardHeader className="py-4 md:py-6">
+                <div className="w-12 h-12 md:w-16 md:h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+                  <Icon name="TrendingUp" className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
-                <CardTitle className="text-4xl font-bold gradient-text">{stats.publishedToday}</CardTitle>
-                <CardDescription className="text-lg">Новых за сегодня</CardDescription>
+                <CardTitle className="text-2xl md:text-4xl font-bold gradient-text">{stats.publishedToday}</CardTitle>
+                <CardDescription className="text-sm md:text-lg">Новых за сегодня</CardDescription>
               </CardHeader>
             </Card>
           </div>
         </div>
       </section>
 
-      <section className="py-16">
+      <section className="py-8 md:py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl font-bold text-center mb-12 gradient-text">Последние отзывы</h2>
-            <div className="space-y-6">
+            <h2 className="text-2xl md:text-4xl font-bold text-center mb-8 md:mb-12 gradient-text">Последние отзывы</h2>
+            <div className="space-y-4 md:space-y-6">
               {mockReviews.map((review, index) => (
                 <Card key={review.id} className="animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: `${index * 0.1}s` }}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback className="gradient-bg text-white">{review.author[0]}</AvatarFallback>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                        <Avatar className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
+                          <AvatarFallback className="gradient-bg text-white text-sm">{review.author[0]}</AvatarFallback>
                         </Avatar>
-                        <div>
-                          <CardTitle className="text-lg">{review.author}</CardTitle>
-                          <CardDescription className="flex items-center gap-2">
-                            <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'}>
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base md:text-lg truncate">{review.author}</CardTitle>
+                          <CardDescription className="flex items-center gap-1 md:gap-2 flex-wrap">
+                            <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'} className="text-xs">
                               {review.marketplace}
                             </Badge>
                             <span className="text-xs">{review.date}</span>
                           </CardDescription>
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5 md:gap-1 flex-shrink-0">
                         {[...Array(5)].map((_, i) => (
                           <Icon
                             key={i}
                             name="Star"
-                            className={`w-4 h-4 ${i < review.rating ? 'fill-accent text-accent' : 'text-gray-300'}`}
+                            className={`w-3 h-3 md:w-4 md:h-4 ${i < review.rating ? 'fill-accent text-accent' : 'text-gray-300'}`}
                           />
                         ))}
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-foreground mb-4">{review.text}</p>
-                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                  <CardContent className="pt-0">
+                    <p className="text-sm md:text-base text-foreground mb-3 md:mb-4">{review.text}</p>
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs md:text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <Icon name="Package" className="w-4 h-4" />
-                        <span>Артикул: {review.productArticle}</span>
+                        <Icon name="Package" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                        <span className="truncate">Артикул: {review.productArticle}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Icon name="Store" className="w-4 h-4" />
-                        <span>Продавец: {review.seller}</span>
+                        <Icon name="Store" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                        <span className="truncate">Продавец: {review.seller}</span>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-            <div className="text-center mt-8">
-              <Button onClick={() => setCurrentView('reviews')} size="lg" variant="outline">
+            <div className="text-center mt-6 md:mt-8">
+              <Button onClick={() => handleNavigation('reviews')} size="lg" variant="outline" className="w-full sm:w-auto">
                 Показать все отзывы
                 <Icon name="ArrowRight" className="w-4 h-4 ml-2" />
               </Button>
