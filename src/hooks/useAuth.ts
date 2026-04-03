@@ -25,14 +25,15 @@ function loadStoredUser(): AuthUser | null {
 }
 
 export function useAuth() {
+  // Показываем кэш пока грузимся — но всегда перепроверяем на сервере
   const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
-  const [loading, setLoading] = useState(!loadStoredUser()); // false если уже есть юзер
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const didInit = useRef(false);
 
   const login = async () => {
-    // DEV-режим: нет Telegram — логинимся как admin
-    if (import.meta.env.DEV) {
+    // DEV-режим без Telegram SDK
+    if (import.meta.env.DEV && !window.Telegram?.WebApp?.initData) {
       const devUser: AuthUser = {
         id: 1,
         name: 'Admin (dev)',
@@ -51,6 +52,10 @@ export function useAuth() {
     const initData = tg?.initData;
 
     if (!initData) {
+      // Нет Telegram — очищаем любые чужие данные
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+      setUser(null);
       setLoading(false);
       setError('Приложение должно быть открыто через Telegram');
       return;
@@ -66,12 +71,14 @@ export function useAuth() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ошибка авторизации');
+      // Всегда перезаписываем — данные берём только с сервера
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       setUser(data.user);
     } catch (e: unknown) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
+      setUser(null);
       setError(e instanceof Error ? e.message : 'Ошибка авторизации');
     } finally {
       setLoading(false);
@@ -95,17 +102,12 @@ export function useAuth() {
       tg.expand();
     }
 
-    // Уже залогинен — ничего не делаем
-    if (loadStoredUser()) {
-      setLoading(false);
-      return;
-    }
-
-    // Ждём SDK если ещё не загрузился
+    // Всегда идём на сервер — даже если есть кэш в localStorage
     if (tg?.initData) {
       login();
     } else {
-      const timer = setTimeout(() => { login(); }, 400);
+      // Ждём SDK
+      const timer = setTimeout(() => login(), 400);
       return () => clearTimeout(timer);
     }
   }, []);
