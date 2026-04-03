@@ -32,6 +32,21 @@ export function useAuth() {
     const initData = tg?.initData;
 
     if (!initData) {
+      // В режиме разработки — авторизуемся как admin
+      if (import.meta.env.DEV) {
+        const devUser: AuthUser = {
+          id: 1,
+          name: 'Admin (dev)',
+          avatar_url: null,
+          telegram_id: '477993854',
+          role: 'admin',
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(devUser));
+        localStorage.setItem(TOKEN_KEY, 'dev-token');
+        setUser(devUser);
+        setLoading(false);
+        return;
+      }
       setLoading(false);
       setError('Приложение должно быть открыто через Telegram');
       return;

@@ -58,7 +58,30 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+const DEV_MOCK_REVIEWS = {
+  reviews: [
+    { id: 1, marketplace: 'Wildberries', product_article: '12345678', product_link: 'https://wildberries.ru/catalog/12345678', seller: 'ООО "Качественные товары"', rating: 4, review_text: 'Товар не соответствует описанию. Качество ужасное, вернуть не получилось. Мой честный отзыв заблокировали на площадке.', status: 'approved', created_at: '2024-01-15T10:00:00', author_name: 'Мария К.', author_avatar: null, telegram_id: '111', user_id: 2, images: [] },
+    { id: 2, marketplace: 'OZON', product_article: '87654321', product_link: 'https://ozon.ru/product/87654321', seller: 'ИП Иванов', rating: 3, review_text: 'Продавец не отправил товар вовремя. Поддержка игнорирует. Отзыв удалили после жалобы продавца.', status: 'pending', created_at: '2024-01-20T12:00:00', author_name: 'Алексей П.', author_avatar: null, telegram_id: '222', user_id: 3, images: [] },
+  ]
+};
+const DEV_MOCK_USERS = {
+  users: [
+    { id: 1, name: 'Admin (dev)', telegram_id: '477993854', avatar_url: null, role: 'admin', is_blocked: false, created_at: '2024-01-01T00:00:00', reviews_count: 0 },
+    { id: 2, name: 'Мария К.', telegram_id: '111', avatar_url: null, role: 'user', is_blocked: false, created_at: '2024-01-10T00:00:00', reviews_count: 1 },
+  ]
+};
+
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+  if (import.meta.env.DEV && getToken() === 'dev-token') {
+    const method = init?.method?.toUpperCase() || 'GET';
+    const urlObj = new URL(url, window.location.href);
+    const action = urlObj.searchParams.get('action');
+    if (method === 'GET') {
+      const mock = action === 'users' ? DEV_MOCK_USERS : DEV_MOCK_REVIEWS;
+      return new Response(JSON.stringify(mock), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({ id: 99, status: 'pending', images: [] }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+  }
   return fetch(url, {
     ...init,
     headers: {
