@@ -55,7 +55,9 @@ type View = 'home' | 'reviews' | 'add' | 'profile' | 'admin' | 'support' | 'revi
 
 function authHeaders(): HeadersInit {
   const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (!token) return {};
+  // Платформа фильтрует Authorization → используем X-Authorization
+  return { 'X-Authorization': `Bearer ${token}` };
 }
 
 const DEV_MOCK_REVIEWS = {
