@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export interface AuthUser {
   id: number;
@@ -15,38 +15,42 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+function loadStoredUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    try {
-      const raw = localStorage.getItem(USER_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
+  const [loading, setLoading] = useState(!loadStoredUser()); // false если уже есть юзер
   const [error, setError] = useState<string | null>(null);
+  const didInit = useRef(false);
 
   const login = async () => {
+    // DEV-режим: нет Telegram — логинимся как admin
+    if (import.meta.env.DEV) {
+      const devUser: AuthUser = {
+        id: 1,
+        name: 'Admin (dev)',
+        avatar_url: null,
+        telegram_id: '477993854',
+        role: 'admin',
+      };
+      localStorage.setItem(USER_KEY, JSON.stringify(devUser));
+      localStorage.setItem(TOKEN_KEY, 'dev-token');
+      setUser(devUser);
+      setLoading(false);
+      return;
+    }
+
     const tg = window.Telegram?.WebApp;
     const initData = tg?.initData;
 
     if (!initData) {
-      // В режиме разработки — авторизуемся как admin
-      if (import.meta.env.DEV) {
-        const devUser: AuthUser = {
-          id: 1,
-          name: 'Admin (dev)',
-          avatar_url: null,
-          telegram_id: '477993854',
-          role: 'admin',
-        };
-        localStorage.setItem(USER_KEY, JSON.stringify(devUser));
-        localStorage.setItem(TOKEN_KEY, 'dev-token');
-        setUser(devUser);
-        setLoading(false);
-        return;
-      }
       setLoading(false);
       setError('Приложение должно быть открыто через Telegram');
       return;
@@ -66,6 +70,8 @@ export function useAuth() {
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       setUser(data.user);
     } catch (e: unknown) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
       setError(e instanceof Error ? e.message : 'Ошибка авторизации');
     } finally {
       setLoading(false);
@@ -76,24 +82,30 @@ export function useAuth() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setUser(null);
+    setLoading(false);
   };
 
   useEffect(() => {
-    const init = () => {
-      const tg = window.Telegram?.WebApp;
-      if (tg) {
-        tg.ready();
-        tg.expand();
-      }
-      if (!user) {
-        login();
-      }
-    };
-    // Даём SDK время загрузиться
-    if (window.Telegram?.WebApp) {
-      init();
+    if (didInit.current) return;
+    didInit.current = true;
+
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    // Уже залогинен — ничего не делаем
+    if (loadStoredUser()) {
+      setLoading(false);
+      return;
+    }
+
+    // Ждём SDK если ещё не загрузился
+    if (tg?.initData) {
+      login();
     } else {
-      const timer = setTimeout(init, 300);
+      const timer = setTimeout(() => { login(); }, 400);
       return () => clearTimeout(timer);
     }
   }, []);
