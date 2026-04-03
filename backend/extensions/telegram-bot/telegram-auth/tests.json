@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 204
+    },
+    {
+      "name": "Callback with invalid token returns 401",
+      "method": "POST",
+      "path": "/?action=callback",
+      "body": {"token": "invalid-token-12345"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Invalid or expired token"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
