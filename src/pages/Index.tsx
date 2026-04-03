@@ -282,9 +282,10 @@ const Index = () => {
     try {
       const res = await apiFetch(BASE);
       if (!res.ok) throw new Error('Ошибка загрузки');
-      const data: Review[] = await res.json();
-      setStatsTotal(data.length);
-      setHomeReviews(data.filter(r => r.status === 'approved').slice(0, 3));
+      const data = await res.json();
+      const list: Review[] = data.reviews ?? data ?? [];
+      setStatsTotal(list.length);
+      setHomeReviews(list.filter(r => r.status === 'approved').slice(0, 3));
     } catch {
       // silent on home page
     } finally {
@@ -302,8 +303,9 @@ const Index = () => {
       const url = params.toString() ? `${BASE}?${params}` : BASE;
       const res = await apiFetch(url);
       if (!res.ok) throw new Error('Ошибка загрузки отзывов');
-      const data: Review[] = await res.json();
-      setReviews(data.filter(r => r.status === 'approved'));
+      const data = await res.json();
+      const list: Review[] = data.reviews ?? data ?? [];
+      setReviews(list.filter(r => r.status === 'approved'));
     } catch (e: unknown) {
       toast({ title: 'Ошибка', description: e instanceof Error ? e.message : 'Не удалось загрузить отзывы', variant: 'destructive' });
     } finally {
@@ -317,8 +319,8 @@ const Index = () => {
     try {
       const res = await apiFetch(`${BASE}?my=1`);
       if (!res.ok) throw new Error('Ошибка загрузки');
-      const data: Review[] = await res.json();
-      setMyReviews(data);
+      const data = await res.json();
+      setMyReviews(data.reviews ?? data ?? []);
     } catch (e: unknown) {
       toast({ title: 'Ошибка', description: e instanceof Error ? e.message : 'Не удалось загрузить ваши отзывы', variant: 'destructive' });
     } finally {
@@ -332,8 +334,8 @@ const Index = () => {
     try {
       const res = await apiFetch(`${BASE}?status=pending`);
       if (!res.ok) throw new Error('Ошибка загрузки');
-      const data: Review[] = await res.json();
-      setPendingReviews(data);
+      const data = await res.json();
+      setPendingReviews(data.reviews ?? data ?? []);
     } catch (e: unknown) {
       toast({ title: 'Ошибка', description: e instanceof Error ? e.message : 'Не удалось загрузить очередь', variant: 'destructive' });
     } finally {
@@ -347,8 +349,8 @@ const Index = () => {
     try {
       const res = await apiFetch(`${BASE}?action=users`);
       if (!res.ok) throw new Error('Ошибка загрузки');
-      const data: ApiUser[] = await res.json();
-      setAdminUsers(data);
+      const data = await res.json();
+      setAdminUsers(data.users ?? data ?? []);
     } catch (e: unknown) {
       toast({ title: 'Ошибка', description: e instanceof Error ? e.message : 'Не удалось загрузить пользователей', variant: 'destructive' });
     } finally {
