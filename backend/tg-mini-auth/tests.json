@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 204
+    },
+    {
+      "name": "Missing initData returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "initData required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Invalid initData returns 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"initData": "fake_data=123&hash=abc"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Invalid initData"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

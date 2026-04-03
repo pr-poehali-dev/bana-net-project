@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 204
+    },
+    {
+      "name": "GET without token returns 401",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST without token returns 401",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
