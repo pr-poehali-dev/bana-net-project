@@ -318,14 +318,11 @@ def handle_set_role(event: dict, payload: dict) -> dict:
 def handler(event: dict, context) -> dict:
     """API отзывов: создание, получение, модерация."""
     method = event.get("httpMethod", "")
-    headers = event.get("headers", {})
-    print(f"[handler] method={method} headers_keys={list(headers.keys())}")
 
     if method == "OPTIONS":
         return {"statusCode": 204, "headers": get_cors_headers(), "body": ""}
 
     payload = verify_jwt(event)
-    print(f"[handler] payload={payload}")
     if not payload:
         return json_response(401, {"error": "Требуется авторизация"})
 

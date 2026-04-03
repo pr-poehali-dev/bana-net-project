@@ -1,4 +1,7 @@
 import { getToken } from '@/hooks/useAuth';
+import func2url from '../../backend/func2url.json';
+
+export const REVIEWS_URL: string = func2url.reviews;
 
 export interface Review {
   id: number;

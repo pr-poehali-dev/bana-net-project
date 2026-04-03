@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Review, ApiUser, View, LOGO_URL, apiFetch, fileToBase64, adminEmail, adminTelegram } from '@/types/app';
+import { Review, ApiUser, View, LOGO_URL, apiFetch, fileToBase64, adminEmail, adminTelegram, REVIEWS_URL } from '@/types/app';
 import {
   AppNavigation,
   HomeView,
@@ -60,7 +60,7 @@ const Index = () => {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const BASE = import.meta.env.VITE_REVIEWS_URL as string;
+  const BASE = REVIEWS_URL;
 
   // ── Navigation ───────────────────────────────────────────────────────────────
 
