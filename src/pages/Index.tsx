@@ -464,13 +464,21 @@ const Index = () => {
           <div className="mb-6 md:mb-8">
             <label className="text-sm font-medium mb-2 block">Поиск по артикулу, продавцу или ссылке на товар</label>
             <div className="relative">
-              <Icon name="Link" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Icon name="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input 
-                placeholder="Вставьте ссылку на товар (https://wildberries.ru/catalog/...)" 
+                placeholder="Артикул, название продавца или ссылка на товар..." 
                 className="pl-10 h-12 md:h-11"
                 value={reviewSearchLink}
                 onChange={(e) => setReviewSearchLink(e.target.value)}
               />
+              {reviewSearchLink && (
+                <button
+                  onClick={() => setReviewSearchLink('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <Icon name="X" className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
           
@@ -483,15 +491,32 @@ const Index = () => {
           </Tabs>
 
           <div className="space-y-4 md:space-y-6">
-            {mockReviews
-              .filter(review => 
-                activeTab === 'all' || 
-                review.marketplace.toLowerCase() === activeTab
-              )
-              .filter(review => 
-                !reviewSearchLink || review.productLink.toLowerCase().includes(reviewSearchLink.toLowerCase())
-              )
-              .map((review, index) => renderReviewCard(review, index))}
+            {(() => {
+              const filtered = mockReviews
+                .filter(review => 
+                  activeTab === 'all' || 
+                  review.marketplace.toLowerCase() === activeTab
+                )
+                .filter(review => {
+                  if (!reviewSearchLink) return true;
+                  const q = reviewSearchLink.toLowerCase();
+                  return (
+                    review.productLink.toLowerCase().includes(q) ||
+                    review.productArticle.toLowerCase().includes(q) ||
+                    review.seller.toLowerCase().includes(q)
+                  );
+                });
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <Icon name="SearchX" className="w-12 h-12 mx-auto mb-4 opacity-40" />
+                    <p className="text-lg font-medium">Ничего не найдено</p>
+                    <p className="text-sm mt-1">Попробуйте изменить запрос или сбросить фильтр</p>
+                  </div>
+                );
+              }
+              return filtered.map((review, index) => renderReviewCard(review, index));
+            })()}
           </div>
         </div>
       </div>
