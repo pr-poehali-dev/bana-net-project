@@ -24,7 +24,7 @@ export function useAuth() {
       return null;
     }
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const login = async () => {
@@ -32,6 +32,7 @@ export function useAuth() {
     const initData = tg?.initData;
 
     if (!initData) {
+      setLoading(false);
       setError('Приложение должно быть открыто через Telegram');
       return;
     }
@@ -63,13 +64,22 @@ export function useAuth() {
   };
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    if (tg) {
-      tg.ready();
-      tg.expand();
-    }
-    if (!user) {
-      login();
+    const init = () => {
+      const tg = window.Telegram?.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+      }
+      if (!user) {
+        login();
+      }
+    };
+    // Даём SDK время загрузиться
+    if (window.Telegram?.WebApp) {
+      init();
+    } else {
+      const timer = setTimeout(init, 300);
+      return () => clearTimeout(timer);
     }
   }, []);
 
