@@ -230,6 +230,8 @@ const Index = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsSearch, setReviewsSearch] = useState('');
   const [reviewsMarketplace, setReviewsMarketplace] = useState('all');
+  const reviewsSearchRef = useRef('');
+  const reviewsMarketplaceRef = useRef('all');
 
   // Home page state
   const [homeReviews, setHomeReviews] = useState<Review[]>([]);
@@ -298,8 +300,10 @@ const Index = () => {
     setReviewsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (reviewsSearch.trim()) params.set('search', reviewsSearch.trim());
-      if (reviewsMarketplace !== 'all') params.set('marketplace', reviewsMarketplace);
+      const search = reviewsSearchRef.current.trim();
+      const marketplace = reviewsMarketplaceRef.current;
+      if (search) params.set('search', search);
+      if (marketplace !== 'all') params.set('marketplace', marketplace);
       const url = params.toString() ? `${BASE}?${params}` : BASE;
       const res = await apiFetch(url);
       if (!res.ok) throw new Error('Ошибка загрузки отзывов');
@@ -311,7 +315,7 @@ const Index = () => {
     } finally {
       setReviewsLoading(false);
     }
-  }, [auth.user, BASE, reviewsSearch, reviewsMarketplace, toast]);
+  }, [auth.user, BASE, toast]);
 
   const fetchMyReviews = useCallback(async () => {
     if (!auth.user) return;
@@ -361,23 +365,23 @@ const Index = () => {
   // ── Effects ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (currentView === 'home') fetchHomeReviews();
-  }, [currentView, fetchHomeReviews]);
+    if (currentView === 'home' && auth.user) fetchHomeReviews();
+  }, [currentView, auth.user]); // eslint-disable-line
 
   useEffect(() => {
-    if (currentView === 'reviews') fetchReviews();
-  }, [currentView, fetchReviews]);
+    if (currentView === 'reviews' && auth.user) fetchReviews();
+  }, [currentView, auth.user]); // eslint-disable-line
 
   useEffect(() => {
-    if (currentView === 'profile') fetchMyReviews();
-  }, [currentView, fetchMyReviews]);
+    if (currentView === 'profile' && auth.user) fetchMyReviews();
+  }, [currentView, auth.user]); // eslint-disable-line
 
   useEffect(() => {
-    if (currentView === 'admin') {
+    if (currentView === 'admin' && auth.user) {
       fetchPendingReviews();
       fetchAdminUsers();
     }
-  }, [currentView, fetchPendingReviews, fetchAdminUsers]);
+  }, [currentView, auth.user]); // eslint-disable-line
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -415,7 +419,9 @@ const Index = () => {
 
     setSubmitting(true);
     try {
-      const images = await Promise.all(uploadedFiles.map(fileToBase64));
+      const rawImages = await Promise.all(uploadedFiles.map(fileToBase64));
+      // Убираем data URL префикс (data:image/jpeg;base64,XXX → XXX)
+      const images = rawImages.map(b64 => b64.includes(',') ? b64.split(',')[1] : b64);
       const res = await apiFetch(BASE, {
         method: 'POST',
         body: JSON.stringify({ ...form, images }),
@@ -691,7 +697,7 @@ const Index = () => {
         <Input
           placeholder="Поиск по артикулу, продавцу, ссылке..."
           value={reviewsSearch}
-          onChange={e => setReviewsSearch(e.target.value)}
+          onChange={e => { setReviewsSearch(e.target.value); reviewsSearchRef.current = e.target.value; }}
           onKeyDown={e => e.key === 'Enter' && fetchReviews()}
           className="flex-1"
         />
@@ -703,7 +709,7 @@ const Index = () => {
       {/* Marketplace tabs */}
       <Tabs
         value={reviewsMarketplace}
-        onValueChange={val => setReviewsMarketplace(val)}
+        onValueChange={val => { setReviewsMarketplace(val); reviewsMarketplaceRef.current = val; setTimeout(fetchReviews, 0); }}
       >
         <TabsList className="w-full">
           <TabsTrigger value="all" className="flex-1">Все</TabsTrigger>
