@@ -5,7 +5,7 @@ export interface AuthUser {
   name: string;
   avatar_url: string | null;
   telegram_id: string;
-  is_admin: number; // 0 = обычный пользователь, 1 = администратор
+  is_admin: number;
 }
 
 const TOKEN_KEY = 'jwt_token';
@@ -31,7 +31,6 @@ function getCachedUser(): AuthUser | null {
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Если кэш старый (нет поля is_admin) — сбрасываем
     if (typeof parsed.is_admin === 'undefined') {
       localStorage.removeItem(USER_KEY);
       localStorage.removeItem('jwt_token');
@@ -48,14 +47,6 @@ export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(cached);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-  function addLog(msg: string) {
-    const time = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const line = `[${time}] ${msg}`;
-    console.log(line);
-    setDebugLogs(prev => [...prev, line]);
-  }
 
   const logout = () => {
     clearSession();
@@ -64,13 +55,8 @@ export function useAuth() {
   };
 
   useEffect(() => {
-    addLog(`🌐 URL: ${window.location.href.slice(0, 100)}`);
-    addLog(`📄 readyState: ${document.readyState}`);
-    addLog(`💾 Кэш: user=${!!cached}, token=${!!getToken()}`);
-
     function getInitDataFromUrl(): string | null {
-      // Telegram передаёт initData в хеше URL: #tgWebAppData=...
-      const hash = window.location.hash.slice(1); // убираем #
+      const hash = window.location.hash.slice(1);
       const params = new URLSearchParams(hash);
       const raw = params.get('tgWebAppData');
       return raw ? decodeURIComponent(raw) : null;
@@ -78,36 +64,22 @@ export function useAuth() {
 
     function run() {
       const tg = window.Telegram?.WebApp;
-      addLog(`📦 Telegram WebApp: ${tg ? 'есть' : 'НЕТ'}`);
 
       if (tg) {
         tg.ready();
         tg.expand();
-        addLog(`📱 platform: ${tg.platform}, version: ${tg.version}`);
-        addLog(`🔑 initData (tg): ${tg.initData ? `есть (${tg.initData.length} симв.)` : 'ПУСТОЙ'}`);
-        if (tg.initDataUnsafe?.user) {
-          const u = tg.initDataUnsafe.user;
-          addLog(`👤 tg user: id=${u.id}, name=${u.first_name} ${u.last_name || ''}`.trim());
-        }
       }
 
-      // Пробуем получить initData: сначала из Telegram SDK, потом из URL
       const initData = tg?.initData || getInitDataFromUrl();
-      addLog(`🔑 initData итого: ${initData ? `есть (${initData.length} симв.)` : 'НЕТ'}`);
 
       if (!initData) {
-        addLog(`⚠️ initData недоступен ни через SDK, ни из URL`);
-        if (cached) {
-          addLog(`✅ Используем кэш: ${cached.name} (id=${cached.id})`);
-        } else {
-          addLog(`❌ Нет ни initData, ни кэша`);
+        if (!cached) {
           setError('Откройте приложение через Telegram.');
         }
         setLoading(false);
         return;
       }
 
-      addLog(`🚀 Отправляю initData на сервер (${initData.length} симв.)...`);
       setError(null);
 
       fetch(AUTH_URL, {
@@ -116,21 +88,16 @@ export function useAuth() {
         body: JSON.stringify({ initData }),
       })
         .then(async (res) => {
-          addLog(`📥 HTTP ${res.status} от сервера`);
           const data = await res.json();
-          addLog(`📥 Ответ: ${JSON.stringify(data).slice(0, 150)}`);
           if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
           saveSession(data.token, data.user);
           setUser(data.user);
-          addLog(`✅ Успех! id=${data.user?.id}, name=${data.user?.name}, is_admin=${data.user?.is_admin}`);
         })
         .catch((e: unknown) => {
           const msg = e instanceof Error ? e.message : String(e);
-          addLog(`❌ Ошибка: ${msg}`);
+          console.error('[auth]', msg);
           if (!getCachedUser()) {
             setError(msg);
-          } else {
-            addLog(`⚠️ Ошибка сети — работаем с кэшем`);
           }
         })
         .finally(() => {
@@ -138,14 +105,12 @@ export function useAuth() {
         });
     }
 
-    // Ждём полной загрузки страницы — скрипт Telegram должен выполниться
     if (document.readyState === 'complete') {
       run();
     } else {
-      addLog(`⏳ Жду полной загрузки страницы (readyState: ${document.readyState})...`);
       window.addEventListener('load', run, { once: true });
     }
   }, []);
 
-  return { user, loading, error, logout, debugLogs };
+  return { user, loading, error, logout };
 }
