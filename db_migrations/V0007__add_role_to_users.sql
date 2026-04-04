@@ -1,0 +1,1 @@
+ALTER TABLE t_p41037438_bana_net_project.users ADD COLUMN IF NOT EXISTS role VARCHAR(50) NOT NULL DEFAULT 'user';
