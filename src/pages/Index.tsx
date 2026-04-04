@@ -130,8 +130,13 @@ const Index = () => {
   };
 
   const isTelegram = !!window.Telegram?.WebApp?.initData;
-  if (!isTelegram && (authLoading || authError || !user)) {
-    return <TelegramGate loading={authLoading} />;
+
+  if (authLoading) {
+    return <TelegramGate loading={true} />;
+  }
+
+  if (!user) {
+    return <TelegramGate loading={false} />;
   }
 
   return (
