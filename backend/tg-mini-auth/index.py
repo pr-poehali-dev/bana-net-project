@@ -97,14 +97,12 @@ def upsert_user(tg_user: dict) -> dict:
     conn = get_db()
     try:
         cur = conn.cursor()
-        select_sql = f"SELECT id, role FROM {schema}users WHERE telegram_id = %s"
-        print(f"[DB] SELECT query: {select_sql % (telegram_id,)}")
-        cur.execute(select_sql, (telegram_id,))
+        cur.execute(f"SELECT id, is_admin FROM {schema}users WHERE telegram_id = %s", (telegram_id,))
         row = cur.fetchone()
         print(f"[DB] Existing user row: {row}")
 
         if row:
-            user_id, role = row
+            user_id, is_admin = row
             cur.execute(
                 f"""UPDATE {schema}users
                     SET name = %s, avatar_url = COALESCE(%s, avatar_url),
@@ -112,20 +110,21 @@ def upsert_user(tg_user: dict) -> dict:
                     WHERE id = %s""",
                 (name, photo_url, user_id)
             )
-            print(f"[DB] Updated existing user id={user_id}")
+            print(f"[DB] Updated existing user id={user_id}, is_admin={is_admin}")
         else:
-            insert_sql = f"""INSERT INTO {schema}users
-                    (telegram_id, name, avatar_url, email_verified, password_hash, role, created_at, updated_at, last_login_at)
-                    VALUES (%s, %s, %s, TRUE, '', 'user', NOW(), NOW(), NOW())
-                    RETURNING id, role"""
-            print(f"[DB] Inserting new user...")
-            cur.execute(insert_sql, (telegram_id, name, photo_url))
-            user_id, role = cur.fetchone()
-            print(f"[DB] Inserted new user id={user_id}, role={role}")
+            cur.execute(
+                f"""INSERT INTO {schema}users
+                    (telegram_id, name, avatar_url, email_verified, password_hash, role, is_admin, created_at, updated_at, last_login_at)
+                    VALUES (%s, %s, %s, TRUE, '', 'user', 0, NOW(), NOW(), NOW())
+                    RETURNING id, is_admin""",
+                (telegram_id, name, photo_url)
+            )
+            user_id, is_admin = cur.fetchone()
+            print(f"[DB] Inserted new user id={user_id}, is_admin={is_admin}")
 
         conn.commit()
         print(f"[DB] Commit OK")
-        return {"id": user_id, "role": role, "name": name, "avatar_url": photo_url, "telegram_id": telegram_id}
+        return {"id": user_id, "is_admin": is_admin, "name": name, "avatar_url": photo_url, "telegram_id": telegram_id}
     except Exception as e:
         print(f"[DB] ERROR in upsert_user: {type(e).__name__}: {e}")
         conn.rollback()
@@ -150,13 +149,13 @@ def get_user_by_id(user_id: int) -> dict | None:
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT id, telegram_id, name, avatar_url, role FROM {schema}users WHERE id = %s",
+            f"SELECT id, telegram_id, name, avatar_url, is_admin FROM {schema}users WHERE id = %s",
             (user_id,)
         )
         row = cur.fetchone()
         if not row:
             return None
-        return {"id": row[0], "telegram_id": row[1], "name": row[2], "avatar_url": row[3], "role": row[4]}
+        return {"id": row[0], "telegram_id": row[1], "name": row[2], "avatar_url": row[3], "is_admin": row[4]}
     finally:
         conn.close()
 
@@ -202,7 +201,7 @@ def handler(event: dict, context) -> dict:
     print(f"[HANDLER] tg_user validated: {tg_user}")
 
     user = upsert_user(tg_user)
-    token = create_jwt_token(user["id"], user["role"])
+    token = create_jwt_token(user["id"], user["is_admin"])
 
     return json_response(200, {
         "token": token,
@@ -211,6 +210,6 @@ def handler(event: dict, context) -> dict:
             "name": user["name"],
             "avatar_url": user["avatar_url"],
             "telegram_id": user["telegram_id"],
-            "role": user["role"],
+            "is_admin": user["is_admin"],
         }
     })

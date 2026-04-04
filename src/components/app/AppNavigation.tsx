@@ -11,9 +11,10 @@ interface AppNavigationProps {
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   onNavigate: (view: View) => void;
+  isAdmin: boolean;
 }
 
-export default function AppNavigation({ currentView, mobileMenuOpen, setMobileMenuOpen, onNavigate }: AppNavigationProps) {
+export default function AppNavigation({ currentView, mobileMenuOpen, setMobileMenuOpen, onNavigate, isAdmin }: AppNavigationProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-50">
       <div className="container mx-auto px-4">
@@ -46,10 +47,12 @@ export default function AppNavigation({ currentView, mobileMenuOpen, setMobileMe
               <Icon name="User" className="w-4 h-4 mr-2" />
               Профиль
             </Button>
-            <Button onClick={() => onNavigate('admin')} size="sm" className="gradient-bg">
-              <Icon name="Shield" className="w-4 h-4 mr-2" />
-              Админ
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => onNavigate('admin')} size="sm" className="gradient-bg">
+                <Icon name="Shield" className="w-4 h-4 mr-2" />
+                Админ
+              </Button>
+            )}
           </div>
 
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -91,10 +94,12 @@ export default function AppNavigation({ currentView, mobileMenuOpen, setMobileMe
                     <Icon name="User" className="w-5 h-5 mr-3" />
                     Профиль
                   </Button>
-                  <Button onClick={() => onNavigate('admin')} className="w-full justify-start text-lg h-12 gradient-bg">
-                    <Icon name="Shield" className="w-5 h-5 mr-3" />
-                    Админ-панель
-                  </Button>
+                  {isAdmin && (
+                    <Button onClick={() => onNavigate('admin')} className="w-full justify-start text-lg h-12 gradient-bg">
+                      <Icon name="Shield" className="w-5 h-5 mr-3" />
+                      Админ-панель
+                    </Button>
+                  )}
                 </div>
               </div>
             </SheetContent>

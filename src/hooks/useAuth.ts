@@ -5,7 +5,7 @@ export interface AuthUser {
   name: string;
   avatar_url: string | null;
   telegram_id: string;
-  role: 'user' | 'admin';
+  is_admin: number; // 0 = обычный пользователь, 1 = администратор
 }
 
 const TOKEN_KEY = 'jwt_token';

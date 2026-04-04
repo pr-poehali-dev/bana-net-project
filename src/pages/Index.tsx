@@ -34,7 +34,8 @@ const Index = () => {
 
   const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews();
   const { reviews: myReviews } = useReviews({ my: true, autoLoad: !!user });
-  const { reviews: pendingReviews } = useReviews({ status: 'pending', autoLoad: user?.role === 'admin' });
+  const isAdmin = user?.is_admin === 1;
+  const { reviews: pendingReviews } = useReviews({ status: 'pending', autoLoad: isAdmin });
 
   const stats = {
     totalReviews: reviews.length,
@@ -146,6 +147,7 @@ const Index = () => {
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
         onNavigate={handleNavigation}
+        isAdmin={isAdmin}
       />
 
       {currentView === 'home' && (
@@ -189,7 +191,7 @@ const Index = () => {
           reviews={myReviews}
         />
       )}
-      {currentView === 'admin' && (
+      {currentView === 'admin' && isAdmin && (
         <AdminView
           reviews={pendingReviews}
           adminEmail={adminEmail}
