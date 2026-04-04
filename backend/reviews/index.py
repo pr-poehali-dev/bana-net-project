@@ -18,7 +18,7 @@ def get_cors_headers():
     return {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Authorization",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
     }
 
 
@@ -41,10 +41,7 @@ def get_schema():
 
 def verify_jwt(event: dict) -> dict | None:
     """Декодирует JWT из заголовка Authorization. Возвращает payload или None."""
-    headers = event.get("headers", {})
-    # Платформа remaps Authorization → X-Authorization
-    auth = (headers.get("X-Authorization") or headers.get("x-authorization")
-            or headers.get("Authorization") or headers.get("authorization"))
+    auth = event.get("headers", {}).get("Authorization") or event.get("headers", {}).get("authorization")
     if not auth or not auth.startswith("Bearer "):
         return None
     token = auth[7:]
@@ -317,9 +314,7 @@ def handle_set_role(event: dict, payload: dict) -> dict:
 
 def handler(event: dict, context) -> dict:
     """API отзывов: создание, получение, модерация."""
-    method = event.get("httpMethod", "")
-
-    if method == "OPTIONS":
+    if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 204, "headers": get_cors_headers(), "body": ""}
 
     payload = verify_jwt(event)

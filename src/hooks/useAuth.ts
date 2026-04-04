@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface AuthUser {
   id: number;
@@ -15,48 +15,23 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-function loadStoredUser(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
 export function useAuth() {
-  // Показываем кэш пока грузимся — но всегда перепроверяем на сервере
-  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const didInit = useRef(false);
 
   const login = async () => {
-    // DEV-режим без Telegram SDK
-    if (import.meta.env.DEV && !window.Telegram?.WebApp?.initData) {
-      const devUser: AuthUser = {
-        id: 1,
-        name: 'Admin (dev)',
-        avatar_url: null,
-        telegram_id: '477993854',
-        role: 'admin',
-      };
-      localStorage.setItem(USER_KEY, JSON.stringify(devUser));
-      localStorage.setItem(TOKEN_KEY, 'dev-token');
-      setUser(devUser);
-      setLoading(false);
-      return;
-    }
-
     const tg = window.Telegram?.WebApp;
     const initData = tg?.initData;
 
     if (!initData) {
-      // Нет Telegram — очищаем любые чужие данные
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-      setUser(null);
-      setLoading(false);
       setError('Приложение должно быть открыто через Telegram');
       return;
     }
@@ -71,14 +46,10 @@ export function useAuth() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ошибка авторизации');
-      // Всегда перезаписываем — данные берём только с сервера
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       setUser(data.user);
     } catch (e: unknown) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-      setUser(null);
       setError(e instanceof Error ? e.message : 'Ошибка авторизации');
     } finally {
       setLoading(false);
@@ -89,26 +60,16 @@ export function useAuth() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setUser(null);
-    setLoading(false);
   };
 
   useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-
     const tg = window.Telegram?.WebApp;
     if (tg) {
       tg.ready();
       tg.expand();
     }
-
-    // Всегда идём на сервер — даже если есть кэш в localStorage
-    if (tg?.initData) {
+    if (!user) {
       login();
-    } else {
-      // Ждём SDK
-      const timer = setTimeout(() => login(), 400);
-      return () => clearTimeout(timer);
     }
   }, []);
 
