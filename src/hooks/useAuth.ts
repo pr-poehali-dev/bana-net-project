@@ -24,7 +24,7 @@ export function useAuth() {
       return null;
     }
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const login = async () => {
@@ -32,6 +32,7 @@ export function useAuth() {
     const initData = tg?.initData;
 
     if (!initData) {
+      setLoading(false);
       setError('Приложение должно быть открыто через Telegram');
       return;
     }
