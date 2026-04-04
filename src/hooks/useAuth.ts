@@ -60,6 +60,14 @@ export function useAuth() {
     addLog(`📄 readyState: ${document.readyState}`);
     addLog(`💾 Кэш: user=${!!cached}, token=${!!getToken()}`);
 
+    function getInitDataFromUrl(): string | null {
+      // Telegram передаёт initData в хеше URL: #tgWebAppData=...
+      const hash = window.location.hash.slice(1); // убираем #
+      const params = new URLSearchParams(hash);
+      const raw = params.get('tgWebAppData');
+      return raw ? decodeURIComponent(raw) : null;
+    }
+
     function run() {
       const tg = window.Telegram?.WebApp;
       addLog(`📦 Telegram WebApp: ${tg ? 'есть' : 'НЕТ'}`);
@@ -68,17 +76,19 @@ export function useAuth() {
         tg.ready();
         tg.expand();
         addLog(`📱 platform: ${tg.platform}, version: ${tg.version}`);
-        addLog(`🔑 initData: ${tg.initData ? `есть (${tg.initData.length} симв.)` : 'ПУСТОЙ'}`);
+        addLog(`🔑 initData (tg): ${tg.initData ? `есть (${tg.initData.length} симв.)` : 'ПУСТОЙ'}`);
         if (tg.initDataUnsafe?.user) {
           const u = tg.initDataUnsafe.user;
           addLog(`👤 tg user: id=${u.id}, name=${u.first_name} ${u.last_name || ''}`.trim());
         }
       }
 
-      const initData = tg?.initData;
+      // Пробуем получить initData: сначала из Telegram SDK, потом из URL
+      const initData = tg?.initData || getInitDataFromUrl();
+      addLog(`🔑 initData итого: ${initData ? `есть (${initData.length} симв.)` : 'НЕТ'}`);
 
       if (!initData) {
-        addLog(`⚠️ initData недоступен`);
+        addLog(`⚠️ initData недоступен ни через SDK, ни из URL`);
         if (cached) {
           addLog(`✅ Используем кэш: ${cached.name} (id=${cached.id})`);
         } else {
