@@ -120,12 +120,12 @@ export function useAuth() {
         });
     }
 
-    // Если Telegram ещё не загружен — ждём 300ms и пробуем снова
-    if (window.Telegram?.WebApp) {
+    // Ждём полной загрузки страницы — скрипт Telegram должен выполниться
+    if (document.readyState === 'complete') {
       run();
     } else {
-      addLog(`⏳ Жду загрузки Telegram скрипта...`);
-      setTimeout(run, 300);
+      addLog(`⏳ Жду полной загрузки страницы (readyState: ${document.readyState})...`);
+      window.addEventListener('load', run, { once: true });
     }
   }, []);
 
