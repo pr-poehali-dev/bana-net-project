@@ -1,5 +1,6 @@
 """
-Управление отзывами: создание, получение, модерация.
+Управление отзывами: создание, получение, модерация, редактирование.
+Управление пользователями: список, смена роли, блокировка, удаление.
 Требует JWT в заголовке Authorization.
 """
 
@@ -17,8 +18,8 @@ import requests
 def get_cors_headers():
     return {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Authorization",
     }
 
 
@@ -40,8 +41,14 @@ def get_schema():
 
 
 def verify_jwt(event: dict) -> dict | None:
-    """Декодирует JWT из заголовка Authorization. Возвращает payload или None."""
-    auth = event.get("headers", {}).get("Authorization") or event.get("headers", {}).get("authorization")
+    """Декодирует JWT из заголовка X-Authorization или Authorization."""
+    headers = event.get("headers", {})
+    auth = (
+        headers.get("X-Authorization")
+        or headers.get("x-authorization")
+        or headers.get("Authorization")
+        or headers.get("authorization")
+    )
     if not auth or not auth.startswith("Bearer "):
         return None
     token = auth[7:]
@@ -133,7 +140,7 @@ def handle_get_reviews(event: dict, payload: dict) -> dict:
             SELECT r.id, r.marketplace, r.product_article, r.product_link, r.seller,
                    r.rating, r.review_text, r.status, r.created_at,
                    u.name AS author_name, u.avatar_url AS author_avatar,
-                   u.telegram_id, r.user_id
+                   u.telegram_id, r.user_id, r.admin_comment
             FROM {schema}reviews r
             JOIN {schema}users u ON u.id = r.user_id
             {where}
@@ -162,6 +169,7 @@ def handle_get_reviews(event: dict, payload: dict) -> dict:
                 "review_text": r[6], "status": r[7], "created_at": str(r[8]),
                 "author_name": r[9], "author_avatar": r[10],
                 "telegram_id": r[11], "user_id": r[12],
+                "admin_comment": r[13],
                 "images": images_map.get(r[0], []),
             })
 
@@ -170,28 +178,49 @@ def handle_get_reviews(event: dict, payload: dict) -> dict:
         conn.close()
 
 
+def handle_get_stats(event: dict, payload: dict) -> dict:
+    """GET /?action=stats — количество опубликованных отзывов."""
+    schema = get_schema()
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT COUNT(*) FROM {schema}reviews WHERE status = 'approved'")
+        total = cur.fetchone()[0]
+        return json_response(200, {"total": total})
+    finally:
+        conn.close()
+
+
 def handle_create_review(event: dict, payload: dict) -> dict:
-    """POST / — создать отзыв (status=pending)."""
+    """POST / — создать отзыв (status=pending). Заблокированные пользователи не могут создавать отзывы."""
     schema = get_schema()
     user_id = payload["user_id"]
-    body = json.loads(event.get("body") or "{}")
-
-    marketplace = body.get("marketplace", "").strip()
-    review_text = body.get("review_text", "").strip()
-    rating = body.get("rating")
-    product_article = body.get("product_article", "").strip() or None
-    product_link = body.get("product_link", "").strip() or None
-    seller = body.get("seller", "").strip() or None
-    images_b64 = body.get("images", [])
-
-    if not marketplace or not review_text or not rating:
-        return json_response(400, {"error": "marketplace, review_text и rating обязательны"})
-    if len(images_b64) < 2:
-        return json_response(400, {"error": "Необходимо минимум 2 фотографии"})
 
     conn = get_db()
     try:
         cur = conn.cursor()
+        cur.execute(f"SELECT is_blocked, name FROM {schema}users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            return json_response(403, {"error": "Пользователь не найден"})
+        is_blocked, user_name = row
+        if is_blocked:
+            return json_response(403, {"error": "Ваш аккаунт заблокирован"})
+
+        body = json.loads(event.get("body") or "{}")
+        marketplace = body.get("marketplace", "").strip()
+        review_text = body.get("review_text", "").strip()
+        rating = body.get("rating")
+        product_article = body.get("product_article", "").strip() or None
+        product_link = body.get("product_link", "").strip() or None
+        seller = body.get("seller", "").strip() or None
+        images_b64 = body.get("images", [])
+
+        if not marketplace or not review_text or not rating:
+            return json_response(400, {"error": "marketplace, review_text и rating обязательны"})
+        if len(images_b64) < 2:
+            return json_response(400, {"error": "Необходимо минимум 2 фотографии"})
+
         cur.execute(f"""
             INSERT INTO {schema}reviews
             (user_id, marketplace, product_article, product_link, seller, rating, review_text, status)
@@ -216,9 +245,6 @@ def handle_create_review(event: dict, payload: dict) -> dict:
 
         conn.commit()
 
-        cur.execute(f"SELECT name FROM {schema}users WHERE id = %s", (user_id,))
-        user_name = cur.fetchone()[0]
-
         review_data = {
             "marketplace": marketplace, "product_article": product_article,
             "product_link": product_link, "seller": seller,
@@ -227,6 +253,48 @@ def handle_create_review(event: dict, payload: dict) -> dict:
         notify_admin(review_data, user_name)
 
         return json_response(201, {"id": review_id, "status": "pending", "images": image_urls})
+    finally:
+        conn.close()
+
+
+def handle_update_review(event: dict, payload: dict) -> dict:
+    """PUT /?action=update — редактировать свой отзыв (только pending/rejected, только автор)."""
+    schema = get_schema()
+    user_id = payload["user_id"]
+    body = json.loads(event.get("body") or "{}")
+    review_id = body.get("review_id")
+
+    if not review_id:
+        return json_response(400, {"error": "review_id обязателен"})
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT user_id, status FROM {schema}reviews WHERE id = %s", (review_id,))
+        row = cur.fetchone()
+        if not row:
+            return json_response(404, {"error": "Отзыв не найден"})
+        owner_id, status = row
+        if owner_id != user_id:
+            return json_response(403, {"error": "Нет доступа"})
+        if status == "approved":
+            return json_response(400, {"error": "Нельзя редактировать опубликованный отзыв"})
+
+        fields = {}
+        for field in ("marketplace", "review_text", "product_article", "product_link", "seller", "rating"):
+            if field in body:
+                fields[field] = body[field] or None
+
+        if fields:
+            set_clause = ", ".join(f"{k} = %s" for k in fields)
+            values = list(fields.values()) + [review_id]
+            cur.execute(
+                f"UPDATE {schema}reviews SET {set_clause}, status = 'pending', admin_comment = NULL, updated_at = NOW() WHERE id = %s",
+                values
+            )
+            conn.commit()
+
+        return json_response(200, {"id": review_id, "status": "pending"})
     finally:
         conn.close()
 
@@ -302,6 +370,8 @@ def handle_set_role(event: dict, payload: dict) -> dict:
     new_role = body.get("role")
     if not target_id or new_role not in ("user", "admin"):
         return json_response(400, {"error": "user_id и role (user/admin) обязательны"})
+    if target_id == payload.get("user_id"):
+        return json_response(400, {"error": "Нельзя изменить свою роль"})
     conn = get_db()
     try:
         cur = conn.cursor()
@@ -312,10 +382,59 @@ def handle_set_role(event: dict, payload: dict) -> dict:
         conn.close()
 
 
+def handle_block_user(event: dict, payload: dict) -> dict:
+    """PUT /?action=block-user — заблокировать или разблокировать пользователя (только admin)."""
+    if payload.get("role") != "admin":
+        return json_response(403, {"error": "Недостаточно прав"})
+    schema = get_schema()
+    body = json.loads(event.get("body") or "{}")
+    target_id = body.get("user_id")
+    is_blocked = body.get("is_blocked")
+    if target_id is None or is_blocked is None:
+        return json_response(400, {"error": "user_id и is_blocked обязательны"})
+    if target_id == payload.get("user_id"):
+        return json_response(400, {"error": "Нельзя заблокировать себя"})
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"UPDATE {schema}users SET is_blocked = %s WHERE id = %s", (bool(is_blocked), target_id))
+        conn.commit()
+        return json_response(200, {"user_id": target_id, "is_blocked": bool(is_blocked)})
+    finally:
+        conn.close()
+
+
+def handle_delete_user(event: dict, payload: dict) -> dict:
+    """DELETE /?action=delete-user — удалить пользователя и все его отзывы (только admin)."""
+    if payload.get("role") != "admin":
+        return json_response(403, {"error": "Недостаточно прав"})
+    schema = get_schema()
+    params = event.get("queryStringParameters") or {}
+    target_id = params.get("user_id")
+    if not target_id:
+        return json_response(400, {"error": "user_id обязателен"})
+    if int(target_id) == payload.get("user_id"):
+        return json_response(400, {"error": "Нельзя удалить себя"})
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT id FROM {schema}reviews WHERE user_id = %s", (target_id,))
+        review_ids = [r[0] for r in cur.fetchall()]
+        if review_ids:
+            placeholders = ",".join(["%s"] * len(review_ids))
+            cur.execute(f"DELETE FROM {schema}review_images WHERE review_id IN ({placeholders})", review_ids)
+        cur.execute(f"DELETE FROM {schema}reviews WHERE user_id = %s", (target_id,))
+        cur.execute(f"DELETE FROM {schema}users WHERE id = %s", (target_id,))
+        conn.commit()
+        return json_response(200, {"deleted": True, "user_id": int(target_id)})
+    finally:
+        conn.close()
+
+
 def handler(event: dict, context) -> dict:
-    """API отзывов: создание, получение, модерация."""
+    """API отзывов и пользователей: создание, получение, модерация, редактирование, управление пользователями."""
     if event.get("httpMethod") == "OPTIONS":
-        return {"statusCode": 204, "headers": get_cors_headers(), "body": ""}
+        return {"statusCode": 200, "headers": get_cors_headers(), "body": ""}
 
     payload = verify_jwt(event)
     if not payload:
@@ -328,6 +447,8 @@ def handler(event: dict, context) -> dict:
     if method == "GET":
         if action == "users":
             return handle_get_users(event, payload)
+        if action == "stats":
+            return handle_get_stats(event, payload)
         return handle_get_reviews(event, payload)
 
     if method == "PUT":
@@ -335,6 +456,14 @@ def handler(event: dict, context) -> dict:
             return handle_moderate_review(event, payload)
         if action == "set-role":
             return handle_set_role(event, payload)
+        if action == "block-user":
+            return handle_block_user(event, payload)
+        if action == "update":
+            return handle_update_review(event, payload)
+
+    if method == "DELETE":
+        if action == "delete-user":
+            return handle_delete_user(event, payload)
 
     if method == "POST":
         return handle_create_review(event, payload)

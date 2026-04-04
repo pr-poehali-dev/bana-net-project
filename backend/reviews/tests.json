@@ -4,7 +4,7 @@
       "name": "OPTIONS preflight",
       "method": "OPTIONS",
       "path": "/",
-      "expectedStatus": 204
+      "expectedStatus": 200
     },
     {
       "name": "GET without token returns 401",
@@ -19,6 +19,22 @@
       "method": "POST",
       "path": "/",
       "body": {},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET stats without token returns 401",
+      "method": "GET",
+      "path": "/?action=stats",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "DELETE without token returns 401",
+      "method": "DELETE",
+      "path": "/?action=delete-user&user_id=1",
       "expectedStatus": 401,
       "expectedBody": {"error": "Требуется авторизация"},
       "bodyMatcher": "partial"

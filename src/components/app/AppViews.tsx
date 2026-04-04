@@ -24,13 +24,16 @@ interface NavProps {
 }
 
 export function AppNavigation({ currentView, mobileMenuOpen, setMobileMenuOpen, user, onNavigate }: NavProps) {
+  const isAdmin = user?.role === 'admin';
   const navLinks: { label: string; view: View; icon: string }[] = [
     { label: 'Главная', view: 'home', icon: 'Home' },
     { label: 'Отзывы', view: 'reviews', icon: 'MessageSquare' },
-    { label: 'Добавить', view: 'add', icon: 'PlusCircle' },
-    { label: 'Профиль', view: 'profile', icon: 'User' },
+    ...(isAdmin ? [] : [{ label: 'Добавить', view: 'add' as View, icon: 'PlusCircle' }]),
+    ...(isAdmin
+      ? [{ label: 'Админ-панель', view: 'admin' as View, icon: 'Shield' }]
+      : [{ label: 'Профиль', view: 'profile' as View, icon: 'User' }]
+    ),
     { label: 'Поддержка', view: 'support', icon: 'HelpCircle' },
-    ...(user?.role === 'admin' ? [{ label: 'Админ', view: 'admin' as View, icon: 'Shield' }] : []),
   ];
 
   return (
@@ -58,7 +61,7 @@ export function AppNavigation({ currentView, mobileMenuOpen, setMobileMenuOpen, 
 
           <div className="hidden md:flex items-center gap-3">
             {user && (
-              <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('profile')}>
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate(isAdmin ? 'admin' : 'profile')}>
                 <Avatar className="w-8 h-8">
                   {user.avatar_url && <AvatarImage src={user.avatar_url} alt={user.name} />}
                   <AvatarFallback className="gradient-bg text-white text-xs">
@@ -84,7 +87,7 @@ export function AppNavigation({ currentView, mobileMenuOpen, setMobileMenuOpen, 
                 {user && (
                   <div
                     className="flex items-center gap-3 p-3 rounded-lg mb-2 bg-muted cursor-pointer"
-                    onClick={() => onNavigate('profile')}
+                    onClick={() => onNavigate(isAdmin ? 'admin' : 'profile')}
                   >
                     <Avatar className="w-10 h-10">
                       {user.avatar_url && <AvatarImage src={user.avatar_url} alt={user.name} />}
@@ -571,11 +574,14 @@ interface AdminProps {
   setModerateComment: React.Dispatch<React.SetStateAction<Record<number, string>>>;
   handleModerate: (id: number, status: 'approved' | 'rejected') => void;
   handleSetRole: (id: number, role: 'user' | 'admin') => void;
+  handleBlockUser: (id: number, block: boolean) => void;
+  handleDeleteUser: (id: number) => void;
 }
 
 export function AdminView({
   user, pendingReviews, pendingLoading, adminUsers, usersLoading,
   moderateComment, setModerateComment, handleModerate, handleSetRole,
+  handleBlockUser, handleDeleteUser,
 }: AdminProps) {
   if (user.role !== 'admin') {
     return (
@@ -668,37 +674,58 @@ export function AdminView({
             </Card>
           ) : (
             adminUsers.map(u => (
-              <Card key={u.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="w-10 h-10 shrink-0">
-                        {u.avatar_url && <AvatarImage src={u.avatar_url} alt={u.name} />}
-                        <AvatarFallback className="gradient-bg text-white text-sm">
-                          {u.name?.charAt(0)?.toUpperCase() ?? '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{u.name}</p>
-                        <p className="text-xs text-muted-foreground">@{u.telegram_id}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={u.role === 'admin' ? 'bg-purple-100 text-purple-800 text-xs' : 'bg-gray-100 text-gray-700 text-xs'}>
-                            {u.role === 'admin' ? 'Администратор' : 'Пользователь'}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{u.reviews_count} отзывов</span>
-                        </div>
+              <Card key={u.id} className={u.is_blocked ? 'opacity-60 border-red-200' : ''}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="w-10 h-10 shrink-0">
+                      {u.avatar_url && <AvatarImage src={u.avatar_url} alt={u.name} />}
+                      <AvatarFallback className="gradient-bg text-white text-sm">
+                        {u.name?.charAt(0)?.toUpperCase() ?? '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">{u.name}</p>
+                      <p className="text-xs text-muted-foreground">@{u.telegram_id}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <Badge className={u.role === 'admin' ? 'bg-purple-100 text-purple-800 text-xs' : 'bg-gray-100 text-gray-700 text-xs'}>
+                          {u.role === 'admin' ? 'Администратор' : 'Пользователь'}
+                        </Badge>
+                        {u.is_blocked && <Badge className="bg-red-100 text-red-700 text-xs">Заблокирован</Badge>}
+                        <span className="text-xs text-muted-foreground">{u.reviews_count} отзывов</span>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 text-xs"
-                      onClick={() => handleSetRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
-                      disabled={u.id === user.id}
-                    >
-                      {u.role === 'admin' ? 'Снять права' : 'Сделать админом'}
-                    </Button>
                   </div>
+                  {u.id !== user.id && (
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => handleSetRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
+                      >
+                        <Icon name={u.role === 'admin' ? 'UserMinus' : 'UserCheck'} size={13} className="mr-1" />
+                        {u.role === 'admin' ? 'Снять права' : 'Сделать админом'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={`text-xs ${u.is_blocked ? 'border-green-300 text-green-700' : 'border-orange-300 text-orange-700'}`}
+                        onClick={() => handleBlockUser(u.id, !u.is_blocked)}
+                      >
+                        <Icon name={u.is_blocked ? 'Unlock' : 'Lock'} size={13} className="mr-1" />
+                        {u.is_blocked ? 'Разблокировать' : 'Заблокировать'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs border-red-300 text-red-700"
+                        onClick={() => handleDeleteUser(u.id)}
+                      >
+                        <Icon name="Trash2" size={13} className="mr-1" />
+                        Удалить
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))
