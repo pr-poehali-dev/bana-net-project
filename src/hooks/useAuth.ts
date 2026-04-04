@@ -29,7 +29,15 @@ function clearSession() {
 function getCachedUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Если кэш старый (нет поля is_admin) — сбрасываем
+    if (typeof parsed.is_admin === 'undefined') {
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('jwt_token');
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
