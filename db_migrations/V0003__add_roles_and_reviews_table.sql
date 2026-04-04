@@ -1,9 +1,9 @@
-ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+ALTER TABLE t_p41037438_bana_net_project.users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+ALTER TABLE t_p41037438_bana_net_project.users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
 
-CREATE TABLE IF NOT EXISTS reviews (
+CREATE TABLE IF NOT EXISTS t_p41037438_bana_net_project.reviews (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id),
+    user_id INTEGER NOT NULL REFERENCES t_p41037438_bana_net_project.users(id),
     marketplace VARCHAR(50) NOT NULL,
     product_article VARCHAR(255),
     product_link TEXT,
@@ -16,13 +16,13 @@ CREATE TABLE IF NOT EXISTS reviews (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS review_images (
+CREATE TABLE IF NOT EXISTS t_p41037438_bana_net_project.review_images (
     id SERIAL PRIMARY KEY,
-    review_id INTEGER NOT NULL REFERENCES reviews(id),
+    review_id INTEGER NOT NULL REFERENCES t_p41037438_bana_net_project.reviews(id),
     image_url TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status);
-CREATE INDEX IF NOT EXISTS idx_review_images_review_id ON review_images(review_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON t_p41037438_bana_net_project.reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_status ON t_p41037438_bana_net_project.reviews(status);
+CREATE INDEX IF NOT EXISTS idx_review_images_review_id ON t_p41037438_bana_net_project.review_images(review_id);
