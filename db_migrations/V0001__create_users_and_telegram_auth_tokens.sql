@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS t_p41037438_bana_net_project.users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     telegram_id VARCHAR(50),
     email VARCHAR(255),
@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS t_p41037438_bana_net_project.users (
     last_login_at TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON t_p41037438_bana_net_project.users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
 
-CREATE TABLE IF NOT EXISTS t_p41037438_bana_net_project.telegram_auth_tokens (
+CREATE TABLE IF NOT EXISTS telegram_auth_tokens (
     id SERIAL PRIMARY KEY,
     token_hash VARCHAR(64) NOT NULL UNIQUE,
     telegram_id VARCHAR(50) NOT NULL,
@@ -25,4 +25,4 @@ CREATE TABLE IF NOT EXISTS t_p41037438_bana_net_project.telegram_auth_tokens (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_telegram_auth_tokens_hash ON t_p41037438_bana_net_project.telegram_auth_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_telegram_auth_tokens_hash ON telegram_auth_tokens(token_hash);
