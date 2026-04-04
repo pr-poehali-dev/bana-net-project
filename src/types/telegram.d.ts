@@ -7,20 +7,11 @@ interface TelegramWebAppUser {
 }
 
 interface TelegramWebApp {
-  initData: string;
   initDataUnsafe: {
     user?: TelegramWebAppUser;
   };
   openTelegramLink: (url: string) => void;
   ready: () => void;
-  expand: () => void;
-  close: () => void;
-  colorScheme: 'light' | 'dark';
-  BackButton: {
-    show: () => void;
-    hide: () => void;
-    onClick: (cb: () => void) => void;
-  };
 }
 
 interface Window {
