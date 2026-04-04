@@ -11,6 +11,15 @@ export interface AuthUser {
 const TOKEN_KEY = 'jwt_token';
 const USER_KEY = 'auth_user';
 const AUTH_URL = import.meta.env.VITE_TG_MINI_AUTH_URL;
+const IS_DEV = import.meta.env.DEV;
+
+const DEV_USER: AuthUser = {
+  id: 13,
+  name: 'Dev Poehali',
+  avatar_url: null,
+  telegram_id: 'dev_poehali',
+  is_admin: 1,
+};
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -44,17 +53,18 @@ function getCachedUser(): AuthUser | null {
 
 export function useAuth() {
   const cached = getCachedUser();
-  const [user, setUser] = useState<AuthUser | null>(cached);
-  const [loading, setLoading] = useState(!cached);
+  const [user, setUser] = useState<AuthUser | null>(IS_DEV ? DEV_USER : cached);
+  const [loading, setLoading] = useState(IS_DEV ? false : !cached);
   const [error, setError] = useState<string | null>(null);
 
   const logout = () => {
     clearSession();
-    setUser(null);
+    setUser(IS_DEV ? DEV_USER : null);
     setError(null);
   };
 
   useEffect(() => {
+    if (IS_DEV) return;
     function getInitDataFromUrl(): string | null {
       const hash = window.location.hash.slice(1);
       const params = new URLSearchParams(hash);
