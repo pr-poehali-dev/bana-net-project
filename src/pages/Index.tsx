@@ -6,6 +6,7 @@ import { apiFetch, fileToBase64, REVIEWS_URL, type Review } from '@/types/app';
 import AppNavigation from '@/components/app/AppNavigation';
 import { ReviewDetail } from '@/components/app/ReviewCard';
 import { HomeView, ReviewsView, SearchView, AddReviewView, ProfileView, AdminView, SupportView } from '@/components/app/AppViews';
+import TelegramGate from '@/components/app/TelegramGate';
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
 
@@ -13,7 +14,7 @@ type View = 'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'suppo
 
 const Index = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading, error: authError } = useAuth();
 
   const [activeTab, setActiveTab] = useState('all');
   const [currentView, setCurrentView] = useState<View>('home');
@@ -127,6 +128,11 @@ const Index = () => {
     setEditingContacts(false);
     toast({ title: "Контакты обновлены" });
   };
+
+  const isTelegram = !!window.Telegram?.WebApp?.initData;
+  if (!isTelegram && (authLoading || authError || !user)) {
+    return <TelegramGate loading={authLoading} />;
+  }
 
   return (
     <div className="min-h-screen bg-white">
