@@ -41,7 +41,13 @@ def get_schema():
 
 def verify_jwt(event: dict) -> dict | None:
     """Декодирует JWT из заголовка Authorization. Возвращает payload или None."""
-    auth = event.get("headers", {}).get("Authorization") or event.get("headers", {}).get("authorization")
+    headers = event.get("headers", {})
+    auth = (
+        headers.get("X-Authorization")
+        or headers.get("x-authorization")
+        or headers.get("Authorization")
+        or headers.get("authorization")
+    )
     if not auth or not auth.startswith("Bearer "):
         return None
     token = auth[7:]
