@@ -38,10 +38,16 @@ function getCachedUser(): AuthUser | null {
 export function useAuth() {
   const cached = getCachedUser();
   const [user, setUser] = useState<AuthUser | null>(cached);
-  // Кэш есть — показываем приложение мгновенно (loading=false)
-  // Кэша нет — показываем спиннер (loading=true)
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+
+  function addLog(msg: string) {
+    const time = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const line = `[${time}] ${msg}`;
+    console.log(line);
+    setDebugLogs(prev => [...prev, line]);
+  }
 
   const logout = () => {
     clearSession();
@@ -50,44 +56,50 @@ export function useAuth() {
   };
 
   async function verifyToken(token: string): Promise<boolean> {
+    addLog(`🔍 Проверяю токен на сервере...`);
     try {
       const res = await fetch(AUTH_URL, {
         method: 'GET',
         headers: { 'X-Authorization': `Bearer ${token}` },
       });
+      addLog(`🔍 Ответ сервера: HTTP ${res.status}`);
       if (res.ok) {
         const data = await res.json();
-        // Обновляем данные пользователя свежими данными из БД
+        addLog(`✅ Токен валидный, user_id=${data.user?.id}, role=${data.user?.role}`);
         setUser(data.user);
         localStorage.setItem(USER_KEY, JSON.stringify(data.user));
         return true;
       }
+      const errData = await res.json().catch(() => ({}));
+      addLog(`❌ Токен невалидный: ${errData.error || res.statusText}`);
       return false;
-    } catch {
-      // Нет сети — доверяем кэшу, не ломаем UX
-      console.log('[Auth] Network error on verify — using cache');
+    } catch (e) {
+      addLog(`⚠️ Сеть недоступна при проверке токена — используем кэш`);
       return true;
     }
   }
 
   async function loginWithInitData(initData: string) {
+    addLog(`📤 Отправляю initData (${initData.length} симв.) на сервер...`);
     setError(null);
     try {
-      console.log('[Auth] POST login...');
       const res = await fetch(AUTH_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData }),
       });
+      addLog(`📥 Ответ сервера: HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[Auth] Login response:', res.status, data);
-      if (!res.ok) throw new Error(data.error || 'Ошибка авторизации');
+      addLog(`📥 Тело ответа: ${JSON.stringify(data).slice(0, 120)}`);
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       saveSession(data.token, data.user);
       setUser(data.user);
+      addLog(`✅ Пользователь сохранён: id=${data.user?.id}, name=${data.user?.name}, role=${data.user?.role}`);
     } catch (e: unknown) {
-      console.log('[Auth] Login error:', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      addLog(`❌ Ошибка логина: ${msg}`);
       if (!getCachedUser()) {
-        setError(e instanceof Error ? e.message : 'Ошибка авторизации');
+        setError(msg);
       }
     } finally {
       setLoading(false);
@@ -96,22 +108,30 @@ export function useAuth() {
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
+
+    addLog(`📦 Telegram WebApp: ${tg ? 'есть' : 'НЕТ'}`);
     if (tg) {
       tg.ready();
       tg.expand();
+      addLog(`📱 platform: ${tg.platform}, version: ${tg.version}`);
+      addLog(`🔑 initData: ${tg.initData ? `есть (${tg.initData.length} симв.)` : 'ПУСТОЙ'}`);
+      if (tg.initDataUnsafe?.user) {
+        const u = tg.initDataUnsafe.user;
+        addLog(`👤 tg user: id=${u.id}, name=${u.first_name} ${u.last_name || ''}`.trim());
+      }
     }
 
     const token = getToken();
     const initData = tg?.initData;
 
-    console.log('[Auth] token:', !!token, 'initData:', !!initData, 'cached:', !!getCachedUser());
+    addLog(`💾 Кэш: user=${!!getCachedUser()}, token=${!!token}`);
+    addLog(`🔗 URL: ${window.location.href.slice(0, 80)}`);
 
     if (token) {
-      // Есть токен — проверяем на сервере в фоне
+      addLog(`🔄 Есть токен — проверяю на сервере...`);
       verifyToken(token).then((valid) => {
         if (!valid) {
-          // Токен протух — чистим и перелогиниваемся
-          console.log('[Auth] Token invalid — clearing and re-login');
+          addLog(`🔄 Токен протух — чищу кэш и перелогиниваюсь`);
           clearSession();
           setUser(null);
           if (initData) {
@@ -119,19 +139,21 @@ export function useAuth() {
           } else {
             setLoading(false);
             setError('Сессия истекла. Откройте приложение через Telegram заново.');
+            addLog(`❌ initData недоступен для повторного логина`);
           }
         } else {
           setLoading(false);
         }
       });
     } else if (initData) {
-      // Нет токена — логинимся через Telegram
+      addLog(`🚀 Токена нет — логинюсь через initData`);
       loginWithInitData(initData);
     } else {
       setLoading(false);
       setError('Откройте приложение через Telegram.');
+      addLog(`❌ Нет ни токена, ни initData — авторизация невозможна`);
     }
   }, []);
 
-  return { user, loading, error, logout };
+  return { user, loading, error, logout, debugLogs };
 }

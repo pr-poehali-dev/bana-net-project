@@ -14,7 +14,7 @@ type View = 'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'suppo
 
 const Index = () => {
   const { toast } = useToast();
-  const { user, loading: authLoading, error: authError } = useAuth();
+  const { user, loading: authLoading, error: authError, debugLogs } = useAuth();
 
   const [activeTab, setActiveTab] = useState('all');
   const [currentView, setCurrentView] = useState<View>('home');
@@ -132,11 +132,11 @@ const Index = () => {
   const isTelegram = !!window.Telegram?.WebApp?.initData;
 
   if (authLoading) {
-    return <TelegramGate loading={true} />;
+    return <TelegramGate loading={true} debugLogs={debugLogs} />;
   }
 
   if (!user) {
-    return <TelegramGate loading={false} />;
+    return <TelegramGate loading={false} debugLogs={debugLogs} />;
   }
 
   return (
