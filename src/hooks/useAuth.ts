@@ -31,7 +31,12 @@ export function useAuth() {
     const tg = window.Telegram?.WebApp;
     const initData = tg?.initData;
 
+    console.log('[Auth] tg object:', !!tg);
+    console.log('[Auth] initData length:', initData?.length ?? 0);
+    console.log('[Auth] initData value:', initData?.slice(0, 80));
+
     if (!initData) {
+      console.log('[Auth] No initData — stopping');
       setLoading(false);
       setError('Приложение должно быть открыто через Telegram');
       return;
@@ -40,17 +45,21 @@ export function useAuth() {
     setLoading(true);
     setError(null);
     try {
+      console.log('[Auth] Sending to API...');
       const res = await fetch(import.meta.env.VITE_TG_MINI_AUTH_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData }),
       });
       const data = await res.json();
+      console.log('[Auth] API response status:', res.status, 'data:', data);
       if (!res.ok) throw new Error(data.error || 'Ошибка авторизации');
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       setUser(data.user);
+      console.log('[Auth] User set:', data.user);
     } catch (e: unknown) {
+      console.log('[Auth] ERROR:', e);
       setError(e instanceof Error ? e.message : 'Ошибка авторизации');
     } finally {
       setLoading(false);
