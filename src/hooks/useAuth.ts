@@ -56,67 +56,77 @@ export function useAuth() {
   };
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-
-    addLog(`📦 Telegram WebApp: ${tg ? 'есть' : 'НЕТ'}`);
-
-    if (tg) {
-      tg.ready();
-      tg.expand();
-      addLog(`📱 platform: ${tg.platform}, version: ${tg.version}`);
-      addLog(`🔑 initData: ${tg.initData ? `есть (${tg.initData.length} симв.)` : 'ПУСТОЙ'}`);
-      if (tg.initDataUnsafe?.user) {
-        const u = tg.initDataUnsafe.user;
-        addLog(`👤 tg user: id=${u.id}, name=${u.first_name} ${u.last_name || ''}`.trim());
-      }
-    }
-
+    addLog(`🌐 URL: ${window.location.href.slice(0, 100)}`);
+    addLog(`📄 readyState: ${document.readyState}`);
     addLog(`💾 Кэш: user=${!!cached}, token=${!!getToken()}`);
 
-    const initData = tg?.initData;
+    function run() {
+      const tg = window.Telegram?.WebApp;
+      addLog(`📦 Telegram WebApp: ${tg ? 'есть' : 'НЕТ'}`);
 
-    if (!initData) {
-      addLog(`⚠️ initData недоступен`);
-      if (cached) {
-        addLog(`✅ Используем кэш: ${cached.name} (id=${cached.id})`);
-      } else {
-        addLog(`❌ Нет ни initData, ни кэша — авторизация невозможна`);
-        setError('Откройте приложение через Telegram.');
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        addLog(`📱 platform: ${tg.platform}, version: ${tg.version}`);
+        addLog(`🔑 initData: ${tg.initData ? `есть (${tg.initData.length} симв.)` : 'ПУСТОЙ'}`);
+        if (tg.initDataUnsafe?.user) {
+          const u = tg.initDataUnsafe.user;
+          addLog(`👤 tg user: id=${u.id}, name=${u.first_name} ${u.last_name || ''}`.trim());
+        }
       }
-      setLoading(false);
-      return;
+
+      const initData = tg?.initData;
+
+      if (!initData) {
+        addLog(`⚠️ initData недоступен`);
+        if (cached) {
+          addLog(`✅ Используем кэш: ${cached.name} (id=${cached.id})`);
+        } else {
+          addLog(`❌ Нет ни initData, ни кэша`);
+          setError('Откройте приложение через Telegram.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      addLog(`🚀 Отправляю initData на сервер (${initData.length} симв.)...`);
+      setError(null);
+
+      fetch(AUTH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+        .then(async (res) => {
+          addLog(`📥 HTTP ${res.status} от сервера`);
+          const data = await res.json();
+          addLog(`📥 Ответ: ${JSON.stringify(data).slice(0, 150)}`);
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          saveSession(data.token, data.user);
+          setUser(data.user);
+          addLog(`✅ Успех! id=${data.user?.id}, name=${data.user?.name}, role=${data.user?.role}`);
+        })
+        .catch((e: unknown) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          addLog(`❌ Ошибка: ${msg}`);
+          if (!getCachedUser()) {
+            setError(msg);
+          } else {
+            addLog(`⚠️ Ошибка сети — работаем с кэшем`);
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
 
-    // Всегда POST с initData — самый надёжный способ, initData свежий при каждом открытии
-    addLog(`🚀 Отправляю initData на сервер (${initData.length} симв.)...`);
-    setError(null);
-
-    fetch(AUTH_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-    })
-      .then(async (res) => {
-        addLog(`📥 HTTP ${res.status} от сервера`);
-        const data = await res.json();
-        addLog(`📥 Ответ: ${JSON.stringify(data).slice(0, 150)}`);
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        saveSession(data.token, data.user);
-        setUser(data.user);
-        addLog(`✅ Успех! id=${data.user?.id}, name=${data.user?.name}, role=${data.user?.role}`);
-      })
-      .catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message : String(e);
-        addLog(`❌ Ошибка: ${msg}`);
-        if (!getCachedUser()) {
-          setError(msg);
-        } else {
-          addLog(`⚠️ Ошибка сети — работаем с кэшем`);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    // Если Telegram ещё не загружен — ждём 300ms и пробуем снова
+    if (window.Telegram?.WebApp) {
+      run();
+    } else {
+      addLog(`⏳ Жду загрузки Telegram скрипта...`);
+      setTimeout(run, 300);
+    }
   }, []);
 
   return { user, loading, error, logout, debugLogs };
