@@ -1,7 +1,6 @@
 import { getToken } from '@/hooks/useAuth';
-import func2url from '../../backend/func2url.json';
 
-export const REVIEWS_URL: string = func2url.reviews;
+export const REVIEWS_URL: string = import.meta.env.VITE_REVIEWS_URL;
 
 export interface Review {
   id: number;

@@ -1,69 +1,20 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useReviews } from '@/hooks/useReviews';
+import { apiFetch, fileToBase64, REVIEWS_URL, type Review } from '@/types/app';
 import AppNavigation from '@/components/app/AppNavigation';
-import { ReviewDetail, type Review } from '@/components/app/ReviewCard';
+import { ReviewDetail } from '@/components/app/ReviewCard';
 import { HomeView, ReviewsView, SearchView, AddReviewView, ProfileView, AdminView, SupportView } from '@/components/app/AppViews';
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
-
-const mockReviews: Review[] = [
-  {
-    id: 1,
-    marketplace: 'Wildberries',
-    productArticle: '12345678',
-    productLink: 'https://wildberries.ru/catalog/12345678',
-    seller: 'ООО "Качественные товары"',
-    author: 'Мария К.',
-    rating: 1,
-    text: 'Товар не соответствует описанию. Качество ужасное, вернуть не получилось. Мой честный отзыв заблокировали на площадке.',
-    fullText: 'Товар не соответствует описанию. Качество ужасное, вернуть не получилось. Мой честный отзыв заблокировали на площадке. Заказала куртку, пришла совершенно другого цвета и размера. Ткань тонкая, швы кривые. Написала честный отзыв с фото — его удалили через 2 часа. Поддержка маркетплейса не помогла.',
-    date: '2024-01-15',
-    status: 'published',
-    images: [
-      'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/3ba56ce3-90a9-41a6-991b-2d5c1e085477.png',
-      'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png'
-    ]
-  },
-  {
-    id: 2,
-    marketplace: 'OZON',
-    productArticle: '87654321',
-    productLink: 'https://ozon.ru/product/87654321',
-    seller: 'ИП Иванов',
-    author: 'Алексей П.',
-    rating: 2,
-    text: 'Продавец не отправил товар вовремя. Поддержка игнорирует. Отзыв удалили после жалобы продавца.',
-    fullText: 'Продавец не отправил товар вовремя. Поддержка игнорирует. Отзыв удалили после жалобы продавца. Ждал заказ 3 недели вместо обещанных 5 дней. Когда написал отзыв с описанием ситуации, продавец пожаловался и мой отзыв исчез. Деньги вернули только через месяц.',
-    date: '2024-01-20',
-    status: 'published',
-    images: [
-      'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/3ba56ce3-90a9-41a6-991b-2d5c1e085477.png',
-      'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png'
-    ]
-  },
-  {
-    id: 3,
-    marketplace: 'Wildberries',
-    productArticle: '11223344',
-    productLink: 'https://wildberries.ru/catalog/11223344',
-    seller: 'ООО "МегаТорг"',
-    author: 'Елена С.',
-    rating: 1,
-    text: 'Пришел совершенно другой товар. Фото не соответствуют действительности. Мой негативный отзыв не прошел модерацию.',
-    fullText: 'Пришел совершенно другой товар. Фото не соответствуют действительности. Мой негативный отзыв не прошел модерацию. На фото было красивое платье, а пришла тряпка с торчащими нитками. Размер на 2 больше указанного. Отзыв с фотографиями не прошёл модерацию маркетплейса — просто исчез без объяснений.',
-    date: '2024-01-25',
-    status: 'published',
-    images: [
-      'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/3ba56ce3-90a9-41a6-991b-2d5c1e085477.png',
-      'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png'
-    ]
-  }
-];
 
 type View = 'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'support' | 'review-detail';
 
 const Index = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+
   const [activeTab, setActiveTab] = useState('all');
   const [currentView, setCurrentView] = useState<View>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -72,6 +23,7 @@ const Index = () => {
   const [searchParam, setSearchParam] = useState<'article' | 'link' | 'seller'>('article');
   const [reviewSearchLink, setReviewSearchLink] = useState('');
   const [emailCopied, setEmailCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [adminEmail, setAdminEmail] = useState('support@bananet.ru');
   const [adminTelegram, setAdminTelegram] = useState('https://t.me/bananet_support');
@@ -79,10 +31,14 @@ const Index = () => {
   const [tempEmail, setTempEmail] = useState('');
   const [tempTelegram, setTempTelegram] = useState('');
 
+  const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews();
+  const { reviews: myReviews } = useReviews({ my: true, autoLoad: !!user });
+  const { reviews: pendingReviews } = useReviews({ status: 'pending', autoLoad: user?.role === 'admin' });
+
   const stats = {
-    totalReviews: 2847,
-    totalUsers: 1523,
-    publishedToday: 47
+    totalReviews: reviews.length,
+    totalUsers: 0,
+    publishedToday: 0,
   };
 
   const handleNavigation = (view: View) => {
@@ -106,7 +62,14 @@ const Index = () => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async (formData: {
+    marketplace: string;
+    product_article: string;
+    product_link: string;
+    seller: string;
+    rating: number;
+    review_text: string;
+  }) => {
     if (uploadedFiles.length < 2) {
       toast({
         title: "Необходимы изображения",
@@ -115,11 +78,28 @@ const Index = () => {
       });
       return;
     }
-    toast({
-      title: "Отзыв отправлен",
-      description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов.",
-    });
-    setUploadedFiles([]);
+
+    setSubmitting(true);
+    try {
+      const images = await Promise.all(uploadedFiles.map(fileToBase64));
+      const res = await apiFetch(REVIEWS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ ...formData, images }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Ошибка отправки');
+      }
+
+      toast({ title: "Отзыв отправлен", description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов." });
+      setUploadedFiles([]);
+      reloadReviews();
+    } catch (e: unknown) {
+      toast({ title: "Ошибка", description: e instanceof Error ? e.message : 'Не удалось отправить отзыв', variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const copyEmail = async () => {
@@ -159,7 +139,8 @@ const Index = () => {
 
       {currentView === 'home' && (
         <HomeView
-          reviews={mockReviews}
+          reviews={reviews}
+          loading={reviewsLoading}
           stats={stats}
           onNavigate={handleNavigation}
           onOpenReview={openReviewDetail}
@@ -167,7 +148,8 @@ const Index = () => {
       )}
       {currentView === 'reviews' && (
         <ReviewsView
-          reviews={mockReviews}
+          reviews={reviews}
+          loading={reviewsLoading}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           reviewSearchLink={reviewSearchLink}
@@ -187,18 +169,20 @@ const Index = () => {
           onFileUpload={handleFileUpload}
           onRemoveFile={removeFile}
           onSubmit={handleSubmitReview}
+          submitting={submitting}
         />
       )}
       {currentView === 'profile' && (
-        <ProfileView reviews={mockReviews} />
+        <ProfileView
+          user={user}
+          reviews={myReviews}
+        />
       )}
       {currentView === 'admin' && (
         <AdminView
-          reviews={mockReviews}
+          reviews={pendingReviews}
           adminEmail={adminEmail}
           adminTelegram={adminTelegram}
-          setAdminEmail={setAdminEmail}
-          setAdminTelegram={setAdminTelegram}
           editingContacts={editingContacts}
           setEditingContacts={setEditingContacts}
           tempEmail={tempEmail}
@@ -206,6 +190,7 @@ const Index = () => {
           tempTelegram={tempTelegram}
           setTempTelegram={setTempTelegram}
           onSaveContacts={handleSaveContacts}
+          onModerate={reloadReviews}
         />
       )}
       {currentView === 'support' && (

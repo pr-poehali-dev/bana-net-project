@@ -3,20 +3,24 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
+import { formatDate } from '@/types/app';
 
 export interface Review {
   id: number;
   marketplace: string;
-  productArticle: string;
-  productLink: string;
-  seller: string;
-  author: string;
+  product_article: string | null;
+  product_link: string | null;
+  seller: string | null;
+  author_name: string;
+  author_avatar: string | null;
   rating: number;
-  text: string;
-  fullText: string;
-  date: string;
+  review_text: string;
   status: string;
+  created_at: string;
   images: string[];
+  user_id: number;
+  telegram_id: string;
+  admin_comment?: string | null;
 }
 
 interface ReviewCardProps {
@@ -28,7 +32,6 @@ interface ReviewCardProps {
 export function ReviewCard({ review, index, onClick }: ReviewCardProps) {
   return (
     <Card
-      key={review.id}
       className="animate-fade-in hover:shadow-lg transition-shadow cursor-pointer"
       style={{ animationDelay: `${index * 0.1}s` }}
       onClick={() => onClick(review)}
@@ -37,15 +40,15 @@ export function ReviewCard({ review, index, onClick }: ReviewCardProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
             <Avatar className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
-              <AvatarFallback className="gradient-bg text-white text-sm">{review.author[0]}</AvatarFallback>
+              <AvatarFallback className="gradient-bg text-white text-sm">{review.author_name[0]}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base md:text-lg truncate">{review.author}</CardTitle>
+              <CardTitle className="text-base md:text-lg truncate">{review.author_name}</CardTitle>
               <CardDescription className="flex items-center gap-1 md:gap-2 flex-wrap">
                 <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'} className="text-xs">
                   {review.marketplace}
                 </Badge>
-                <span className="text-xs">{review.date}</span>
+                <span className="text-xs">{formatDate(review.created_at)}</span>
               </CardDescription>
             </div>
           </div>
@@ -56,7 +59,7 @@ export function ReviewCard({ review, index, onClick }: ReviewCardProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <p className="text-sm md:text-base text-foreground mb-3 md:mb-4 line-clamp-2">{review.text}</p>
+        <p className="text-sm md:text-base text-foreground mb-3 md:mb-4 line-clamp-2">{review.review_text}</p>
         {review.images && review.images.length > 0 && (
           <div className="flex gap-2 mb-3 overflow-x-auto">
             {review.images.slice(0, 3).map((img, i) => (
@@ -70,14 +73,18 @@ export function ReviewCard({ review, index, onClick }: ReviewCardProps) {
           </div>
         )}
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs md:text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Icon name="Package" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-            <span className="truncate">Артикул: {review.productArticle}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Icon name="Store" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-            <span className="truncate">Продавец: {review.seller}</span>
-          </div>
+          {review.product_article && (
+            <div className="flex items-center gap-1">
+              <Icon name="Package" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+              <span className="truncate">Артикул: {review.product_article}</span>
+            </div>
+          )}
+          {review.seller && (
+            <div className="flex items-center gap-1">
+              <Icon name="Store" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+              <span className="truncate">Продавец: {review.seller}</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -104,15 +111,15 @@ export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarFallback className="gradient-bg text-white text-lg">{review.author[0]}</AvatarFallback>
+                    <AvatarFallback className="gradient-bg text-white text-lg">{review.author_name[0]}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-xl">{review.author}</CardTitle>
+                    <CardTitle className="text-xl">{review.author_name}</CardTitle>
                     <CardDescription className="flex items-center gap-2 mt-1">
                       <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'}>
                         {review.marketplace}
                       </Badge>
-                      <span>{review.date}</span>
+                      <span>{formatDate(review.created_at)}</span>
                     </CardDescription>
                   </div>
                 </div>
@@ -123,7 +130,7 @@ export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-base md:text-lg leading-relaxed">{review.fullText || review.text}</p>
+              <p className="text-base md:text-lg leading-relaxed">{review.review_text}</p>
 
               {review.images && review.images.length > 0 && (
                 <div>
@@ -137,20 +144,26 @@ export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
               )}
 
               <div className="border-t pt-4 space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Icon name="Package" className="w-4 h-4" />
-                  <span>Артикул: {review.productArticle}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon name="Link" className="w-4 h-4" />
-                  <a href={review.productLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
-                    {review.productLink}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon name="Store" className="w-4 h-4" />
-                  <span>Продавец: {review.seller}</span>
-                </div>
+                {review.product_article && (
+                  <div className="flex items-center gap-2">
+                    <Icon name="Package" className="w-4 h-4" />
+                    <span>Артикул: {review.product_article}</span>
+                  </div>
+                )}
+                {review.product_link && (
+                  <div className="flex items-center gap-2">
+                    <Icon name="Link" className="w-4 h-4" />
+                    <a href={review.product_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                      {review.product_link}
+                    </a>
+                  </div>
+                )}
+                {review.seller && (
+                  <div className="flex items-center gap-2">
+                    <Icon name="Store" className="w-4 h-4" />
+                    <span>Продавец: {review.seller}</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

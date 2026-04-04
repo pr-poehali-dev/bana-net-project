@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import Icon from '@/components/ui/icon';
 import { ReviewCard, type Review } from '@/components/app/ReviewCard';
+import { formatDate, apiFetch, REVIEWS_URL } from '@/types/app';
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
 const BANNER_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/3ba56ce3-90a9-41a6-991b-2d5c1e085477.png';
@@ -26,12 +27,13 @@ interface Stats {
 
 interface HomeViewProps {
   reviews: Review[];
+  loading: boolean;
   stats: Stats;
   onNavigate: (view: View) => void;
   onOpenReview: (review: Review) => void;
 }
 
-export function HomeView({ reviews, stats, onNavigate, onOpenReview }: HomeViewProps) {
+export function HomeView({ reviews, loading, stats, onNavigate, onOpenReview }: HomeViewProps) {
   return (
     <div className="min-h-screen pt-16">
       <section className="relative text-white py-12 md:py-20 animate-fade-in overflow-hidden">
@@ -105,9 +107,22 @@ export function HomeView({ reviews, stats, onNavigate, onOpenReview }: HomeViewP
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl md:text-4xl font-bold text-center mb-8 md:mb-12 gradient-text">Последние отзывы</h2>
             <div className="space-y-4 md:space-y-6">
-              {reviews.map((review, index) => (
-                <ReviewCard key={review.id} review={review} index={index} onClick={onOpenReview} />
-              ))}
+              {loading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Icon name="Loader" className="w-8 h-8 mx-auto mb-3 animate-spin opacity-50" />
+                  <p>Загрузка отзывов...</p>
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Icon name="MessageSquare" className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                  <p className="text-lg">Отзывов пока нет</p>
+                  <p className="text-sm">Станьте первым!</p>
+                </div>
+              ) : (
+                reviews.slice(0, 3).map((review, index) => (
+                  <ReviewCard key={review.id} review={review} index={index} onClick={onOpenReview} />
+                ))
+              )}
             </div>
             <div className="text-center mt-6 md:mt-8">
               <Button onClick={() => onNavigate('reviews')} size="lg" variant="outline" className="w-full sm:w-auto">
@@ -126,6 +141,7 @@ export function HomeView({ reviews, stats, onNavigate, onOpenReview }: HomeViewP
 
 interface ReviewsViewProps {
   reviews: Review[];
+  loading: boolean;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   reviewSearchLink: string;
@@ -133,7 +149,7 @@ interface ReviewsViewProps {
   onOpenReview: (review: Review) => void;
 }
 
-export function ReviewsView({ reviews, activeTab, setActiveTab, reviewSearchLink, setReviewSearchLink, onOpenReview }: ReviewsViewProps) {
+export function ReviewsView({ reviews, loading, activeTab, setActiveTab, reviewSearchLink, setReviewSearchLink, onOpenReview }: ReviewsViewProps) {
   const filtered = reviews
     .filter(review =>
       activeTab === 'all' ||
@@ -143,9 +159,9 @@ export function ReviewsView({ reviews, activeTab, setActiveTab, reviewSearchLink
       if (!reviewSearchLink) return true;
       const q = reviewSearchLink.toLowerCase();
       return (
-        review.productLink.toLowerCase().includes(q) ||
-        review.productArticle.toLowerCase().includes(q) ||
-        review.seller.toLowerCase().includes(q)
+        (review.product_link ?? '').toLowerCase().includes(q) ||
+        (review.product_article ?? '').toLowerCase().includes(q) ||
+        (review.seller ?? '').toLowerCase().includes(q)
       );
     });
 
@@ -185,7 +201,12 @@ export function ReviewsView({ reviews, activeTab, setActiveTab, reviewSearchLink
           </Tabs>
 
           <div className="space-y-4 md:space-y-6">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Icon name="Loader" className="w-8 h-8 mx-auto mb-3 animate-spin opacity-50" />
+                <p>Загрузка отзывов...</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <Icon name="Search" className="w-12 h-12 mx-auto mb-4 opacity-30" />
                 <p className="text-lg">Отзывы не найдены</p>
@@ -288,15 +309,42 @@ export function SearchView({ searchParam, setSearchParam }: SearchViewProps) {
 
 // ─── AddReviewView ────────────────────────────────────────────────────────────
 
+interface AddReviewFormData {
+  marketplace: string;
+  product_article: string;
+  product_link: string;
+  seller: string;
+  rating: number;
+  review_text: string;
+}
+
 interface AddReviewViewProps {
   uploadedFiles: File[];
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFile: (index: number) => void;
-  onSubmit: () => void;
+  onSubmit: (data: AddReviewFormData) => void;
+  submitting: boolean;
 }
 
-export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit }: AddReviewViewProps) {
+export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting }: AddReviewViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [marketplace, setMarketplace] = useState('');
+  const [productArticle, setProductArticle] = useState('');
+  const [productLink, setProductLink] = useState('');
+  const [seller, setSeller] = useState('');
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+
+  const handleSubmit = () => {
+    onSubmit({
+      marketplace,
+      product_article: productArticle,
+      product_link: productLink,
+      seller,
+      rating,
+      review_text: reviewText,
+    });
+  };
 
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
@@ -372,40 +420,46 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Маркетплейс *</label>
-                <Select>
+                <Select value={marketplace} onValueChange={setMarketplace}>
                   <SelectTrigger className="h-11 md:h-10">
                     <SelectValue placeholder="Выберите маркетплейс" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="wildberries">Wildberries</SelectItem>
-                    <SelectItem value="ozon">OZON</SelectItem>
+                    <SelectItem value="Wildberries">Wildberries</SelectItem>
+                    <SelectItem value="OZON">OZON</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Артикул товара *</label>
-                <Input placeholder="12345678" className="h-11 md:h-10" />
+                <Input value={productArticle} onChange={e => setProductArticle(e.target.value)} placeholder="12345678" className="h-11 md:h-10" />
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Ссылка на товар *</label>
-                <Input placeholder="https://wildberries.ru/catalog/..." className="h-11 md:h-10" />
+                <Input value={productLink} onChange={e => setProductLink(e.target.value)} placeholder="https://wildberries.ru/catalog/..." className="h-11 md:h-10" />
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Продавец (необязательно)</label>
-                <Input placeholder="ООО 'Название компании'" className="h-11 md:h-10" />
+                <Input value={seller} onChange={e => setSeller(e.target.value)} placeholder="ООО 'Название компании'" className="h-11 md:h-10" />
               </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Оценка недовольства *</label>
                 <CardDescription className="text-xs mb-3">От 1 (немного недоволен) до 5 (крайне недоволен)</CardDescription>
                 <div className="flex gap-2 flex-wrap">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <Button key={rating} variant="outline" size="sm" className="h-10 flex-1 min-w-[60px] md:flex-none hover:bg-destructive hover:text-white hover:border-destructive">
+                  {[1, 2, 3, 4, 5].map((r) => (
+                    <Button
+                      key={r}
+                      variant={rating === r ? 'default' : 'outline'}
+                      size="sm"
+                      className={`h-10 flex-1 min-w-[60px] md:flex-none ${rating === r ? 'bg-destructive border-destructive text-white' : 'hover:bg-destructive hover:text-white hover:border-destructive'}`}
+                      onClick={() => setRating(r)}
+                    >
                       <Icon name="ThumbsDown" className="w-4 h-4 mr-1" />
-                      {rating}
+                      {r}
                     </Button>
                   ))}
                 </div>
@@ -414,6 +468,8 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
               <div>
                 <label className="text-sm font-medium mb-2 block">Ваш отзыв *</label>
                 <Textarea
+                  value={reviewText}
+                  onChange={e => setReviewText(e.target.value)}
                   placeholder="Опишите свою ситуацию, проблему с товаром или продавцом..."
                   className="min-h-[120px] md:min-h-[150px] text-base"
                 />
@@ -463,10 +519,15 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
               <Button
                 className="w-full gradient-bg h-12 md:h-11 text-base md:text-sm"
                 size="lg"
-                onClick={onSubmit}
+                onClick={handleSubmit}
+                disabled={submitting}
               >
-                <Icon name="Send" className="w-4 h-4 mr-2" />
-                Отправить на модерацию
+                {submitting ? (
+                  <Icon name="Loader" className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Icon name="Send" className="w-4 h-4 mr-2" />
+                )}
+                {submitting ? 'Отправка...' : 'Отправить на модерацию'}
               </Button>
             </CardContent>
           </Card>
@@ -479,10 +540,14 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
 // ─── ProfileView ─────────────────────────────────────────────────────────────
 
 interface ProfileViewProps {
+  user: { id: number; name: string; avatar_url: string | null; telegram_id: string; role: string } | null;
   reviews: Review[];
 }
 
-export function ProfileView({ reviews }: ProfileViewProps) {
+export function ProfileView({ user, reviews }: ProfileViewProps) {
+  const publishedCount = reviews.filter(r => r.status === 'approved').length;
+  const pendingCount = reviews.filter(r => r.status === 'pending').length;
+
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
       <div className="container mx-auto px-4">
@@ -493,34 +558,26 @@ export function ProfileView({ reviews }: ProfileViewProps) {
             <Card>
               <CardHeader className="text-center">
                 <Avatar className="w-20 h-20 mx-auto mb-4">
-                  <AvatarImage src="" alt="Аватар" />
+                  <AvatarImage src={user?.avatar_url ?? ''} alt="Аватар" />
                   <AvatarFallback className="gradient-bg text-white text-2xl">
-                    {window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name?.[0] || 'U'}
+                    {user?.name?.[0] || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <CardTitle>
-                  {window.Telegram?.WebApp?.initDataUnsafe?.user
-                    ? `${window.Telegram.WebApp.initDataUnsafe.user.first_name} ${window.Telegram.WebApp.initDataUnsafe.user.last_name || ''}`
-                    : 'Пользователь'}
-                </CardTitle>
-                <CardDescription>
-                  {window.Telegram?.WebApp?.initDataUnsafe?.user?.username
-                    ? `@${window.Telegram.WebApp.initDataUnsafe.user.username}`
-                    : 'Telegram Mini App'}
-                </CardDescription>
+                <CardTitle>{user?.name || 'Пользователь'}</CardTitle>
+                <CardDescription>@{user?.telegram_id || 'Telegram'}</CardDescription>
               </CardHeader>
             </Card>
 
             <Card>
               <CardHeader className="text-center">
-                <CardTitle className="text-3xl gradient-text">12</CardTitle>
+                <CardTitle className="text-3xl gradient-text">{publishedCount}</CardTitle>
                 <CardDescription>Опубликовано отзывов</CardDescription>
               </CardHeader>
             </Card>
 
             <Card>
               <CardHeader className="text-center">
-                <CardTitle className="text-3xl gradient-text">3</CardTitle>
+                <CardTitle className="text-3xl gradient-text">{pendingCount}</CardTitle>
                 <CardDescription>На модерации</CardDescription>
               </CardHeader>
             </Card>
@@ -537,13 +594,13 @@ export function ProfileView({ reviews }: ProfileViewProps) {
                   <div key={review.id} className="flex items-start gap-3 p-4 border rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge variant={review.status === 'published' ? 'default' : 'secondary'} className="text-xs">
-                          {review.status === 'published' ? 'Опубликован' : 'На модерации'}
+                        <Badge variant={review.status === 'approved' ? 'default' : 'secondary'} className="text-xs">
+                          {review.status === 'approved' ? 'Опубликован' : review.status === 'rejected' ? 'Отклонён' : 'На модерации'}
                         </Badge>
                         <Badge variant="outline" className="text-xs">{review.marketplace}</Badge>
                       </div>
-                      <p className="text-sm line-clamp-2 mb-1">{review.text}</p>
-                      <span className="text-xs text-muted-foreground">{review.date}</span>
+                      <p className="text-sm line-clamp-2 mb-1">{review.review_text}</p>
+                      <span className="text-xs text-muted-foreground">{formatDate(review.created_at)}</span>
                     </div>
                     <Button variant="outline" size="sm">
                       <Icon name="Pencil" className="w-4 h-4 mr-1" />
@@ -566,8 +623,6 @@ interface AdminViewProps {
   reviews: Review[];
   adminEmail: string;
   adminTelegram: string;
-  setAdminEmail: (v: string) => void;
-  setAdminTelegram: (v: string) => void;
   editingContacts: boolean;
   setEditingContacts: (v: boolean) => void;
   tempEmail: string;
@@ -575,14 +630,13 @@ interface AdminViewProps {
   tempTelegram: string;
   setTempTelegram: (v: string) => void;
   onSaveContacts: () => void;
+  onModerate: () => void;
 }
 
 export function AdminView({
   reviews,
   adminEmail,
   adminTelegram,
-  setAdminEmail,
-  setAdminTelegram,
   editingContacts,
   setEditingContacts,
   tempEmail,
@@ -590,6 +644,7 @@ export function AdminView({
   tempTelegram,
   setTempTelegram,
   onSaveContacts,
+  onModerate,
 }: AdminViewProps) {
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
@@ -642,10 +697,10 @@ export function AdminView({
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="font-semibold">{review.author}</span>
+                              <span className="font-semibold">{review.author_name}</span>
                               <Badge variant="outline" className="text-xs">{review.marketplace}</Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-2">{review.text}</p>
+                            <p className="text-sm text-muted-foreground mb-2">{review.review_text}</p>
                             {review.images && review.images.length > 0 && (
                               <div className="flex gap-2 mb-2">
                                 {review.images.map((img, i) => (
@@ -654,16 +709,22 @@ export function AdminView({
                               </div>
                             )}
                             <div className="text-xs text-muted-foreground">
-                              Артикул: {review.productArticle} · {review.date}
+                              {review.product_article && <>Артикул: {review.product_article} · </>}{formatDate(review.created_at)}
                             </div>
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={async () => {
+                            await apiFetch(`${REVIEWS_URL}?action=moderate`, { method: 'PUT', body: JSON.stringify({ review_id: review.id, status: 'approved' }) });
+                            onModerate();
+                          }}>
                             <Icon name="Check" className="w-4 h-4 mr-1" />
                             Одобрить
                           </Button>
-                          <Button size="sm" variant="destructive">
+                          <Button size="sm" variant="destructive" onClick={async () => {
+                            await apiFetch(`${REVIEWS_URL}?action=moderate`, { method: 'PUT', body: JSON.stringify({ review_id: review.id, status: 'rejected' }) });
+                            onModerate();
+                          }}>
                             <Icon name="X" className="w-4 h-4 mr-1" />
                             Отклонить
                           </Button>
