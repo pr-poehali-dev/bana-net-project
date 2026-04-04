@@ -99,7 +99,7 @@ def handle_get_reviews(event: dict, payload: dict) -> dict:
     marketplace = params.get("marketplace")
     search = params.get("search", "").strip()
 
-    role = payload.get("role", "user")
+    is_admin = payload.get("is_admin", 0)
     user_id = payload.get("user_id")
 
     conn = get_db()
@@ -108,7 +108,7 @@ def handle_get_reviews(event: dict, payload: dict) -> dict:
         conditions = []
         args = []
 
-        if role != "admin":
+        if not is_admin:
             if my_only:
                 conditions.append("r.user_id = %s")
                 args.append(user_id)
@@ -233,7 +233,7 @@ def handle_create_review(event: dict, payload: dict) -> dict:
 
 def handle_moderate_review(event: dict, payload: dict) -> dict:
     """PUT /?action=moderate — одобрить или отклонить отзыв (только admin)."""
-    if payload.get("role") != "admin":
+    if not payload.get("is_admin"):
         return json_response(403, {"error": "Недостаточно прав"})
 
     schema = get_schema()
@@ -265,14 +265,14 @@ def handle_moderate_review(event: dict, payload: dict) -> dict:
 
 def handle_get_users(event: dict, payload: dict) -> dict:
     """GET /?action=users — список пользователей (только admin)."""
-    if payload.get("role") != "admin":
+    if not payload.get("is_admin"):
         return json_response(403, {"error": "Недостаточно прав"})
     schema = get_schema()
     conn = get_db()
     try:
         cur = conn.cursor()
         cur.execute(f"""
-            SELECT u.id, u.name, u.telegram_id, u.avatar_url, u.role, u.is_blocked, u.created_at,
+            SELECT u.id, u.name, u.telegram_id, u.avatar_url, u.is_admin, u.is_blocked, u.created_at,
                    COUNT(r.id) AS reviews_count
             FROM {schema}users u
             LEFT JOIN {schema}reviews r ON r.user_id = u.id
@@ -284,7 +284,7 @@ def handle_get_users(event: dict, payload: dict) -> dict:
         for row in cur.fetchall():
             users.append({
                 "id": row[0], "name": row[1], "telegram_id": row[2],
-                "avatar_url": row[3], "role": row[4], "is_blocked": row[5],
+                "avatar_url": row[3], "is_admin": row[4], "is_blocked": row[5],
                 "created_at": str(row[6]), "reviews_count": row[7],
             })
         return json_response(200, {"users": users})
@@ -292,22 +292,22 @@ def handle_get_users(event: dict, payload: dict) -> dict:
         conn.close()
 
 
-def handle_set_role(event: dict, payload: dict) -> dict:
-    """PUT /?action=set-role — изменить роль пользователя (только admin)."""
-    if payload.get("role") != "admin":
+def handle_set_admin(event: dict, payload: dict) -> dict:
+    """PUT /?action=set-role — изменить is_admin пользователя (только admin)."""
+    if not payload.get("is_admin"):
         return json_response(403, {"error": "Недостаточно прав"})
     schema = get_schema()
     body = json.loads(event.get("body") or "{}")
     target_id = body.get("user_id")
-    new_role = body.get("role")
-    if not target_id or new_role not in ("user", "admin"):
-        return json_response(400, {"error": "user_id и role (user/admin) обязательны"})
+    new_is_admin = body.get("is_admin")
+    if not target_id or new_is_admin not in (0, 1):
+        return json_response(400, {"error": "user_id и is_admin (0/1) обязательны"})
     conn = get_db()
     try:
         cur = conn.cursor()
-        cur.execute(f"UPDATE {schema}users SET role = %s WHERE id = %s", (new_role, target_id))
+        cur.execute(f"UPDATE {schema}users SET is_admin = %s WHERE id = %s", (new_is_admin, target_id))
         conn.commit()
-        return json_response(200, {"user_id": target_id, "role": new_role})
+        return json_response(200, {"user_id": target_id, "is_admin": new_is_admin})
     finally:
         conn.close()
 
@@ -334,7 +334,7 @@ def handler(event: dict, context) -> dict:
         if action == "moderate":
             return handle_moderate_review(event, payload)
         if action == "set-role":
-            return handle_set_role(event, payload)
+            return handle_set_admin(event, payload)
 
     if method == "POST":
         return handle_create_review(event, payload)

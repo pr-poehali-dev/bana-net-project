@@ -72,11 +72,11 @@ def validate_init_data(init_data: str, bot_token: str) -> dict | None:
     return json.loads(unquote(user_str))
 
 
-def create_jwt_token(user_id: int, role: str) -> str:
+def create_jwt_token(user_id: int, is_admin: int) -> str:
     secret = os.environ["JWT_SECRET"]
     payload = {
         "user_id": user_id,
-        "role": role,
+        "is_admin": is_admin,
         "exp": datetime.now(timezone.utc) + timedelta(hours=24),
         "iat": datetime.now(timezone.utc),
     }
@@ -84,7 +84,7 @@ def create_jwt_token(user_id: int, role: str) -> str:
 
 
 def upsert_user(tg_user: dict) -> dict:
-    """Создаёт или обновляет пользователя, возвращает dict с id и role."""
+    """Создаёт или обновляет пользователя, возвращает dict с id и is_admin."""
     schema = get_schema()
     telegram_id = str(tg_user["id"])
     first_name = tg_user.get("first_name", "")
@@ -114,8 +114,8 @@ def upsert_user(tg_user: dict) -> dict:
         else:
             cur.execute(
                 f"""INSERT INTO {schema}users
-                    (telegram_id, name, avatar_url, email_verified, password_hash, role, is_admin, created_at, updated_at, last_login_at)
-                    VALUES (%s, %s, %s, TRUE, '', 'user', 0, NOW(), NOW(), NOW())
+                    (telegram_id, name, avatar_url, email_verified, password_hash, is_admin, created_at, updated_at, last_login_at)
+                    VALUES (%s, %s, %s, TRUE, '', 0, NOW(), NOW(), NOW())
                     RETURNING id, is_admin""",
                 (telegram_id, name, photo_url)
             )

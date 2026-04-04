@@ -122,7 +122,7 @@ export function useAuth() {
           if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
           saveSession(data.token, data.user);
           setUser(data.user);
-          addLog(`✅ Успех! id=${data.user?.id}, name=${data.user?.name}, role=${data.user?.role}`);
+          addLog(`✅ Успех! id=${data.user?.id}, name=${data.user?.name}, is_admin=${data.user?.is_admin}`);
         })
         .catch((e: unknown) => {
           const msg = e instanceof Error ? e.message : String(e);

@@ -11,7 +11,7 @@ import { formatDate, apiFetch, REVIEWS_URL } from '@/types/app';
 // ─── ProfileView ─────────────────────────────────────────────────────────────
 
 interface ProfileViewProps {
-  user: { id: number; name: string; avatar_url: string | null; telegram_id: string; role: string } | null;
+  user: { id: number; name: string; avatar_url: string | null; telegram_id: string } | null;
   reviews: Review[];
 }
 

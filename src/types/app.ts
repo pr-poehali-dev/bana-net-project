@@ -25,7 +25,7 @@ export interface ApiUser {
   name: string;
   telegram_id: string;
   avatar_url: string | null;
-  role: 'user' | 'admin';
+  is_admin: number;
   is_blocked: boolean;
   created_at: string;
   reviews_count: number;
@@ -46,8 +46,8 @@ const DEV_MOCK_REVIEWS = {
 };
 const DEV_MOCK_USERS = {
   users: [
-    { id: 1, name: 'Admin (dev)', telegram_id: '477993854', avatar_url: null, role: 'admin', is_blocked: false, created_at: '2024-01-01T00:00:00', reviews_count: 0 },
-    { id: 2, name: 'Мария К.', telegram_id: '111', avatar_url: null, role: 'user', is_blocked: false, created_at: '2024-01-10T00:00:00', reviews_count: 1 },
+    { id: 1, name: 'Admin (dev)', telegram_id: '477993854', avatar_url: null, is_admin: 1, is_blocked: false, created_at: '2024-01-01T00:00:00', reviews_count: 0 },
+    { id: 2, name: 'Мария К.', telegram_id: '111', avatar_url: null, is_admin: 0, is_blocked: false, created_at: '2024-01-10T00:00:00', reviews_count: 1 },
   ],
 };
 
