@@ -10,9 +10,20 @@ export interface AuthUser {
 
 const TOKEN_KEY = 'jwt_token';
 const USER_KEY = 'auth_user';
+const AUTH_URL = import.meta.env.VITE_TG_MINI_AUTH_URL;
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
+}
+
+function saveSession(token: string, user: AuthUser) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+function clearSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 function getCachedUser(): AuthUser | null {
@@ -26,57 +37,62 @@ function getCachedUser(): AuthUser | null {
 
 export function useAuth() {
   const cached = getCachedUser();
-
-  // Если есть кэш — сразу показываем приложение, loading=false
-  // Если нет кэша — показываем спиннер, loading=true
   const [user, setUser] = useState<AuthUser | null>(cached);
+  // Кэш есть — показываем приложение мгновенно (loading=false)
+  // Кэша нет — показываем спиннер (loading=true)
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
-  const login = async () => {
-    const tg = window.Telegram?.WebApp;
-    const initData = tg?.initData;
+  const logout = () => {
+    clearSession();
+    setUser(null);
+    setError(null);
+  };
 
-    console.log('[Auth] tg:', !!tg, 'initData length:', initData?.length ?? 0);
-
-    if (!initData) {
-      console.log('[Auth] No initData');
-      setLoading(false);
-      setError('Приложение должно быть открыто через Telegram');
-      return;
+  async function verifyToken(token: string): Promise<boolean> {
+    try {
+      const res = await fetch(AUTH_URL, {
+        method: 'GET',
+        headers: { 'X-Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Обновляем данные пользователя свежими данными из БД
+        setUser(data.user);
+        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        return true;
+      }
+      return false;
+    } catch {
+      // Нет сети — доверяем кэшу, не ломаем UX
+      console.log('[Auth] Network error on verify — using cache');
+      return true;
     }
+  }
 
+  async function loginWithInitData(initData: string) {
     setError(null);
     try {
-      console.log('[Auth] Calling API...');
-      const res = await fetch(import.meta.env.VITE_TG_MINI_AUTH_URL, {
+      console.log('[Auth] POST login...');
+      const res = await fetch(AUTH_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData }),
       });
       const data = await res.json();
-      console.log('[Auth] Response:', res.status, data);
+      console.log('[Auth] Login response:', res.status, data);
       if (!res.ok) throw new Error(data.error || 'Ошибка авторизации');
-      localStorage.setItem(TOKEN_KEY, data.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      saveSession(data.token, data.user);
       setUser(data.user);
-      console.log('[Auth] User saved:', data.user);
     } catch (e: unknown) {
-      console.log('[Auth] ERROR:', e);
-      // Если есть кэш — не показываем ошибку, просто работаем с кэшем
+      console.log('[Auth] Login error:', e);
       if (!getCachedUser()) {
         setError(e instanceof Error ? e.message : 'Ошибка авторизации');
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    setUser(null);
-  };
+  }
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -84,10 +100,38 @@ export function useAuth() {
       tg.ready();
       tg.expand();
     }
-    // Всегда вызываем login — обновляем данные с сервера
-    // Если кэш есть — приложение уже показано, обновление идёт в фоне
-    login();
+
+    const token = getToken();
+    const initData = tg?.initData;
+
+    console.log('[Auth] token:', !!token, 'initData:', !!initData, 'cached:', !!getCachedUser());
+
+    if (token) {
+      // Есть токен — проверяем на сервере в фоне
+      verifyToken(token).then((valid) => {
+        if (!valid) {
+          // Токен протух — чистим и перелогиниваемся
+          console.log('[Auth] Token invalid — clearing and re-login');
+          clearSession();
+          setUser(null);
+          if (initData) {
+            loginWithInitData(initData);
+          } else {
+            setLoading(false);
+            setError('Сессия истекла. Откройте приложение через Telegram заново.');
+          }
+        } else {
+          setLoading(false);
+        }
+      });
+    } else if (initData) {
+      // Нет токена — логинимся через Telegram
+      loginWithInitData(initData);
+    } else {
+      setLoading(false);
+      setError('Откройте приложение через Telegram.');
+    }
   }, []);
 
-  return { user, loading, error, login, logout };
+  return { user, loading, error, logout };
 }

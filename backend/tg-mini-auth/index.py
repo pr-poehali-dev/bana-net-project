@@ -134,12 +134,55 @@ def upsert_user(tg_user: dict) -> dict:
         conn.close()
 
 
+def verify_jwt_token(token: str) -> dict | None:
+    """Проверяет JWT токен, возвращает payload или None."""
+    try:
+        secret = os.environ["JWT_SECRET"]
+        return jwt.decode(token, secret, algorithms=["HS256"])
+    except Exception:
+        return None
+
+
+def get_user_by_id(user_id: int) -> dict | None:
+    """Возвращает пользователя из БД по id."""
+    schema = get_schema()
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id, telegram_id, name, avatar_url, role FROM {schema}users WHERE id = %s",
+            (user_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        return {"id": row[0], "telegram_id": row[1], "name": row[2], "avatar_url": row[3], "role": row[4]}
+    finally:
+        conn.close()
+
+
 def handler(event: dict, context) -> dict:
-    """Авторизация через Telegram Mini App initData."""
+    """Авторизация через Telegram Mini App initData. GET / — проверка токена."""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 204, "headers": get_cors_headers(), "body": ""}
 
-    print(f"[HANDLER] Request received, httpMethod={event.get('httpMethod')}")
+    method = event.get("httpMethod", "POST")
+    print(f"[HANDLER] Request received, httpMethod={method}")
+
+    # GET / — проверка текущего токена
+    if method == "GET":
+        auth_header = event.get("headers", {}).get("X-Authorization", "")
+        token = auth_header.replace("Bearer ", "").strip()
+        if not token:
+            return json_response(401, {"error": "No token"})
+        payload = verify_jwt_token(token)
+        if not payload:
+            return json_response(401, {"error": "Token expired or invalid"})
+        user = get_user_by_id(payload["user_id"])
+        if not user:
+            return json_response(401, {"error": "User not found"})
+        print(f"[HANDLER] Token valid for user_id={user['id']}")
+        return json_response(200, {"user": user})
 
     body = json.loads(event.get("body") or "{}")
     init_data = body.get("initData", "")

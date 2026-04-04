@@ -23,6 +23,14 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "Invalid initData"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET without token returns 401",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "No token"},
+      "bodyMatcher": "partial"
     }
   ]
 }
