@@ -81,31 +81,37 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   });
 }
 
-export function fileToBase64(file: File): Promise<string> {
+export function fileToBase64(file: File, maxSize = 900, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1200;
       let { width, height } = img;
-      if (width > MAX || height > MAX) {
-        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
-        else { width = Math.round(width * MAX / height); height = MAX; }
+      if (width > maxSize || height > maxSize) {
+        if (width > height) { height = Math.round(height * maxSize / width); width = maxSize; }
+        else { width = Math.round(width * maxSize / height); height = maxSize; }
       }
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.75));
+      resolve(canvas.toDataURL('image/jpeg', quality));
     };
     img.onerror = reject;
     img.src = url;
   });
 }
 
-export async function uploadImage(file: File): Promise<string> {
-  const base64 = await fileToBase64(file);
+export async function uploadImage(file: File, onProgress?: (sizeKb: number) => void): Promise<string> {
+  // Итеративно сжимаем до тех пор пока base64 не станет < 350кб
+  const steps: [number, number][] = [[900, 0.7], [700, 0.6], [500, 0.5], [400, 0.4], [300, 0.35]];
+  let base64 = '';
+  for (const [maxSize, quality] of steps) {
+    base64 = await fileToBase64(file, maxSize, quality);
+    if (base64.length < 350_000) break;
+  }
+  onProgress?.(Math.round(base64.length / 1024));
   const res = await apiFetch(UPLOAD_URL, {
     method: 'POST',
     body: JSON.stringify({ image: base64 }),

@@ -94,10 +94,11 @@ const Index = () => {
       log('📦 Загружаю фото по одному...');
       const image_urls: string[] = [];
       for (let i = 0; i < uploadedFiles.length; i++) {
-        log(`⬆️ Фото ${i + 1}/${uploadedFiles.length}...`);
-        const url = await uploadImage(uploadedFiles[i]);
+        const f = uploadedFiles[i];
+        log(`⬆️ Фото ${i + 1}: ${f.name} (исходник ${Math.round(f.size / 1024)}кб)`);
+        const url = await uploadImage(f, (sizeKb) => log(`   сжато до ${sizeKb}кб, отправляю...`));
         image_urls.push(url);
-        log(`✅ Фото ${i + 1} загружено`);
+        log(`✅ Фото ${i + 1} загружено: ${url.slice(-30)}`);
       }
 
       const body = JSON.stringify({ ...formData, image_urls });
