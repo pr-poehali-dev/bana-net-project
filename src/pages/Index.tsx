@@ -91,30 +91,40 @@ const Index = () => {
 
     setSubmitting(true);
     try {
-      log('📦 Загружаю фото по одному...');
-      const image_urls: string[] = [];
+      // Шаг 1: создаём отзыв без фото (~1кб)
+      log('📋 Шаг 1: создаю отзыв...');
+      const r1 = await apiFetch(REVIEWS_URL, { method: 'POST', body: JSON.stringify(formData) });
+      log(`📥 HTTP ${r1.status}`);
+      if (!r1.ok) {
+        const d = await r1.json().catch(() => ({}));
+        log(`❌ ${d.error || 'ошибка'}`);
+        throw new Error(d.error || `HTTP ${r1.status}`);
+      }
+      const { id: reviewId } = await r1.json();
+      log(`✅ Отзыв создан id=${reviewId}`);
+
+      // Шаг 2: загружаем фото по одному напрямую в S3
+      log('🖼️ Шаг 2: загружаю фото...');
       for (let i = 0; i < uploadedFiles.length; i++) {
         const f = uploadedFiles[i];
-        log(`⬆️ Фото ${i + 1}: ${f.name} (${Math.round(f.size / 1024)}кб)`);
-        const url = await uploadImage(f, (msg) => log(`   [${i + 1}] ${msg}`));
-        image_urls.push(url);
-        log(`✅ Фото ${i + 1} загружено`);
+        const isLast = i === uploadedFiles.length - 1;
+        log(`⬆️ Фото ${i + 1}/${uploadedFiles.length}: ${f.name} (${Math.round(f.size / 1024)}кб)`);
+        const cdnUrl = await uploadImage(f, (msg) => log(`   ${msg}`));
+        log(`✅ Загружено, прикрепляю...`);
+
+        // Шаг 3: прикрепляем URL к отзыву
+        const r2 = await apiFetch(`${REVIEWS_URL}?action=attach`, {
+          method: 'POST',
+          body: JSON.stringify({ review_id: reviewId, image_url: cdnUrl, is_last: isLast }),
+        });
+        if (!r2.ok) {
+          const d = await r2.json().catch(() => ({}));
+          log(`❌ Ошибка прикрепления: ${d.error || r2.status}`);
+          throw new Error(d.error || 'Ошибка прикрепления фото');
+        }
+        log(`✅ Фото ${i + 1} прикреплено${isLast ? ' — отзыв отправлен!' : ''}`);
       }
 
-      const body = JSON.stringify({ ...formData, image_urls });
-      log(`📤 POST отзыва ${Math.round(body.length / 1024)}кб`);
-
-      const res = await apiFetch(REVIEWS_URL, { method: 'POST', body });
-      log(`📥 HTTP ${res.status}`);
-
-      if (!res.ok) {
-        const data = await res.json();
-        log(`❌ ${JSON.stringify(data)}`);
-        throw new Error(data.error || 'Ошибка отправки');
-      }
-
-      const result = await res.json();
-      log(`✅ Успех! id=${result.id}`);
       toast({ title: "Отзыв отправлен", description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов." });
       setUploadedFiles([]);
       reloadReviews();
