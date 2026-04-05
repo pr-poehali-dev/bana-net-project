@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import func2url from '../../backend/func2url.json';
 
 export interface AuthUser {
   id: number;
@@ -10,7 +11,7 @@ export interface AuthUser {
 
 const TOKEN_KEY = 'jwt_token';
 const USER_KEY = 'auth_user';
-const AUTH_URL = import.meta.env.VITE_TG_MINI_AUTH_URL;
+const AUTH_URL: string = func2url['tg-mini-auth'];
 const IS_DEV = import.meta.env.DEV;
 
 const DEV_USER: AuthUser = {
@@ -39,10 +40,15 @@ function getCachedUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
     const parsed = JSON.parse(raw);
     if (typeof parsed.is_admin === 'undefined') {
       localStorage.removeItem(USER_KEY);
-      localStorage.removeItem('jwt_token');
+      localStorage.removeItem(TOKEN_KEY);
       return null;
     }
     return parsed;
@@ -54,7 +60,7 @@ function getCachedUser(): AuthUser | null {
 export function useAuth() {
   const cached = getCachedUser();
   const [user, setUser] = useState<AuthUser | null>(IS_DEV ? DEV_USER : cached);
-  const [loading, setLoading] = useState(IS_DEV ? false : !cached);
+  const [loading, setLoading] = useState(IS_DEV ? false : true);
   const [error, setError] = useState<string | null>(null);
 
   const logout = () => {
@@ -83,10 +89,12 @@ export function useAuth() {
       const initData = tg?.initData || getInitDataFromUrl();
 
       if (!initData) {
-        if (!cached) {
+        if (cached) {
+          setLoading(false);
+        } else {
           setError('Откройте приложение через Telegram.');
+          setLoading(false);
         }
-        setLoading(false);
         return;
       }
 
@@ -106,7 +114,9 @@ export function useAuth() {
         .catch((e: unknown) => {
           const msg = e instanceof Error ? e.message : String(e);
           console.error('[auth]', msg);
-          if (!getCachedUser()) {
+          if (cached) {
+            setUser(cached);
+          } else {
             setError(msg);
           }
         })

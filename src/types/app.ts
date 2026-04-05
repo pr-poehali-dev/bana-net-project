@@ -1,6 +1,8 @@
 import { getToken } from '@/hooks/useAuth';
+import func2url from '../../backend/func2url.json';
 
-export const REVIEWS_URL: string = import.meta.env.VITE_REVIEWS_URL;
+export const REVIEWS_URL: string = func2url['reviews'];
+export const TG_MINI_AUTH_URL: string = func2url['tg-mini-auth'];
 
 export interface Review {
   id: number;
