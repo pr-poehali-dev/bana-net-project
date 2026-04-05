@@ -25,6 +25,7 @@ const Index = () => {
   const [reviewSearchLink, setReviewSearchLink] = useState('');
   const [emailCopied, setEmailCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const [adminEmail, setAdminEmail] = useState('support@bananet.ru');
   const [adminTelegram, setAdminTelegram] = useState('https://t.me/bananet_support');
@@ -73,7 +74,20 @@ const Index = () => {
     rating: number;
     review_text: string;
   }) => {
+    const logs: string[] = [];
+    const log = (msg: string) => { logs.push(msg); setDebugLogs([...logs]); };
+
+    log(`🔄 Начало отправки...`);
+    log(`👤 user: ${user ? `id=${user.id} admin=${user.is_admin}` : 'null'}`);
+
+    const token = localStorage.getItem('jwt_token');
+    log(`🔑 токен: ${token ? token.slice(0, 20) + '...' : 'ОТСУТСТВУЕТ'}`);
+    log(`🌐 URL: ${REVIEWS_URL || 'НЕ ЗАДАН'}`);
+    log(`📋 Форма: marketplace=${formData.marketplace}, rating=${formData.rating}`);
+    log(`🖼️ Файлов: ${uploadedFiles.length}`);
+
     if (uploadedFiles.length < 2) {
+      log('❌ Недостаточно файлов (нужно минимум 2)');
       toast({
         title: "Необходимы изображения",
         description: "Прикрепите минимум 2 изображения: скриншот отклонённого отзыва из личного кабинета площадки и фотографию купленного товара.",
@@ -84,22 +98,31 @@ const Index = () => {
 
     setSubmitting(true);
     try {
+      log('📦 Конвертирую файлы в base64...');
       const images = await Promise.all(uploadedFiles.map(fileToBase64));
-      const res = await apiFetch(REVIEWS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ ...formData, images }),
-      });
+      log(`✅ base64 готов: ${images.length} файлов`);
+
+      const body = JSON.stringify({ ...formData, images });
+      log(`📤 Отправляю POST ${REVIEWS_URL} (тело: ${Math.round(body.length / 1024)}кб)`);
+
+      const res = await apiFetch(REVIEWS_URL, { method: 'POST', body });
+      log(`📥 Ответ: HTTP ${res.status}`);
 
       if (!res.ok) {
         const data = await res.json();
+        log(`❌ Ошибка сервера: ${JSON.stringify(data)}`);
         throw new Error(data.error || 'Ошибка отправки');
       }
 
+      const result = await res.json();
+      log(`✅ Успех! id отзыва: ${result.id}`);
       toast({ title: "Отзыв отправлен", description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов." });
       setUploadedFiles([]);
       reloadReviews();
     } catch (e: unknown) {
-      toast({ title: "Ошибка", description: e instanceof Error ? e.message : 'Не удалось отправить отзыв', variant: "destructive" });
+      const msg = e instanceof Error ? e.message : String(e);
+      log(`❌ Исключение: ${msg}`);
+      toast({ title: "Ошибка", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -184,6 +207,7 @@ const Index = () => {
           onRemoveFile={removeFile}
           onSubmit={handleSubmitReview}
           submitting={submitting}
+          debugLogs={debugLogs}
         />
       )}
       {currentView === 'profile' && (

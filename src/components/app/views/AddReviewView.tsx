@@ -22,9 +22,10 @@ interface AddReviewViewProps {
   onRemoveFile: (index: number) => void;
   onSubmit: (data: AddReviewFormData) => void;
   submitting: boolean;
+  debugLogs?: string[];
 }
 
-export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting }: AddReviewViewProps) {
+export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, debugLogs = [] }: AddReviewViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [marketplace, setMarketplace] = useState('');
   const [productArticle, setProductArticle] = useState('');
@@ -227,6 +228,17 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 )}
                 {submitting ? 'Отправка...' : 'Отправить на модерацию'}
               </Button>
+
+              {debugLogs.length > 0 && (
+                <div className="mt-3 rounded-lg border border-gray-200 bg-gray-950 p-3 text-left">
+                  <p className="text-xs font-mono text-gray-400 mb-2">📋 Лог отправки:</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {debugLogs.map((log, i) => (
+                      <p key={i} className={`text-xs font-mono ${log.startsWith('❌') ? 'text-red-400' : log.startsWith('✅') ? 'text-green-400' : log.startsWith('⚠️') ? 'text-yellow-400' : 'text-gray-300'}`}>{log}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
