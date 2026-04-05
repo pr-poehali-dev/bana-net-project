@@ -14,7 +14,7 @@ type View = 'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'suppo
 
 const Index = () => {
   const { toast } = useToast();
-  const { user, loading: authLoading, error: authError } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState('all');
   const [currentView, setCurrentView] = useState<View>('home');
@@ -25,7 +25,6 @@ const Index = () => {
   const [reviewSearchLink, setReviewSearchLink] = useState('');
   const [emailCopied, setEmailCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const [adminEmail, setAdminEmail] = useState('support@bananet.ru');
   const [adminTelegram, setAdminTelegram] = useState('https://t.me/bananet_support');
@@ -33,11 +32,12 @@ const Index = () => {
   const [tempEmail, setTempEmail] = useState('');
   const [tempTelegram, setTempTelegram] = useState('');
 
-  const isLoggedIn = !!user && !authLoading;
-  const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews({ autoLoad: isLoggedIn });
-  const { reviews: myReviews } = useReviews({ my: true, autoLoad: isLoggedIn });
+  const userId = user?.id ?? null;
   const isAdmin = user?.is_admin === 1;
-  const { reviews: pendingReviews } = useReviews({ status: 'pending', autoLoad: isLoggedIn && isAdmin });
+
+  const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews({ userId });
+  const { reviews: myReviews } = useReviews({ my: true, userId });
+  const { reviews: pendingReviews } = useReviews({ status: 'pending', userId: isAdmin ? userId : null });
 
   const stats = {
     totalReviews: reviews.length,
@@ -74,20 +74,7 @@ const Index = () => {
     rating: number;
     review_text: string;
   }) => {
-    const logs: string[] = [];
-    const log = (msg: string) => { logs.push(msg); setDebugLogs([...logs]); };
-
-    log(`🔄 Начало отправки...`);
-    log(`👤 user: ${user ? `id=${user.id} admin=${user.is_admin}` : 'null'}`);
-
-    const token = localStorage.getItem('jwt_token');
-    log(`🔑 токен: ${token ? token.slice(0, 20) + '...' : 'ОТСУТСТВУЕТ'}`);
-    log(`🌐 URL: ${REVIEWS_URL || 'НЕ ЗАДАН'}`);
-    log(`📋 Форма: marketplace=${formData.marketplace}, rating=${formData.rating}`);
-    log(`🖼️ Файлов: ${uploadedFiles.length}`);
-
     if (uploadedFiles.length < 2) {
-      log('❌ Недостаточно файлов (нужно минимум 2)');
       toast({
         title: "Необходимы изображения",
         description: "Прикрепите минимум 2 изображения: скриншот отклонённого отзыва из личного кабинета площадки и фотографию купленного товара.",
@@ -98,30 +85,20 @@ const Index = () => {
 
     setSubmitting(true);
     try {
-      log('📦 Конвертирую файлы в base64...');
       const images = await Promise.all(uploadedFiles.map(fileToBase64));
-      log(`✅ base64 готов: ${images.length} файлов`);
-
       const body = JSON.stringify({ ...formData, images });
-      log(`📤 Отправляю POST ${REVIEWS_URL} (тело: ${Math.round(body.length / 1024)}кб)`);
-
       const res = await apiFetch(REVIEWS_URL, { method: 'POST', body });
-      log(`📥 Ответ: HTTP ${res.status}`);
 
       if (!res.ok) {
         const data = await res.json();
-        log(`❌ Ошибка сервера: ${JSON.stringify(data)}`);
         throw new Error(data.error || 'Ошибка отправки');
       }
 
-      const result = await res.json();
-      log(`✅ Успех! id отзыва: ${result.id}`);
       toast({ title: "Отзыв отправлен", description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов." });
       setUploadedFiles([]);
       reloadReviews();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      log(`❌ Исключение: ${msg}`);
       toast({ title: "Ошибка", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
@@ -153,8 +130,6 @@ const Index = () => {
     setEditingContacts(false);
     toast({ title: "Контакты обновлены" });
   };
-
-  const isTelegram = !!window.Telegram?.WebApp?.initData;
 
   if (authLoading) {
     return <TelegramGate loading={true} />;
@@ -207,7 +182,6 @@ const Index = () => {
           onRemoveFile={removeFile}
           onSubmit={handleSubmitReview}
           submitting={submitting}
-          debugLogs={debugLogs}
         />
       )}
       {currentView === 'profile' && (

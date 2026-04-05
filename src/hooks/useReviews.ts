@@ -6,16 +6,17 @@ interface UseReviewsOptions {
   my?: boolean;
   marketplace?: string;
   search?: string;
-  autoLoad?: boolean;
+  userId?: number | null;
 }
 
 export function useReviews(options: UseReviewsOptions = {}) {
-  const { status, my, marketplace, search, autoLoad = true } = options;
+  const { status, my, marketplace, search, userId = null } = options;
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
     setError(null);
     try {
@@ -38,13 +39,11 @@ export function useReviews(options: UseReviewsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [status, my, marketplace, search]);
+  }, [status, my, marketplace, search, userId]);
 
   useEffect(() => {
-    if (autoLoad) {
-      load();
-    }
-  }, [load, autoLoad]);
+    load();
+  }, [load]);
 
   return { reviews, loading, error, reload: load };
 }
