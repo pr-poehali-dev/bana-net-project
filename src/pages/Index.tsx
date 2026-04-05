@@ -32,10 +32,11 @@ const Index = () => {
   const [tempEmail, setTempEmail] = useState('');
   const [tempTelegram, setTempTelegram] = useState('');
 
-  const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews();
-  const { reviews: myReviews } = useReviews({ my: true, autoLoad: !!user });
+  const isLoggedIn = !!user && !authLoading;
+  const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews({ autoLoad: isLoggedIn });
+  const { reviews: myReviews } = useReviews({ my: true, autoLoad: isLoggedIn });
   const isAdmin = user?.is_admin === 1;
-  const { reviews: pendingReviews } = useReviews({ status: 'pending', autoLoad: isAdmin });
+  const { reviews: pendingReviews } = useReviews({ status: 'pending', autoLoad: isLoggedIn && isAdmin });
 
   const stats = {
     totalReviews: reviews.length,
