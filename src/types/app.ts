@@ -3,7 +3,7 @@ import func2url from '../../backend/func2url.json';
 
 export const REVIEWS_URL: string = func2url['reviews'];
 export const TG_MINI_AUTH_URL: string = func2url['tg-mini-auth'];
-export const UPLOAD_URL: string = func2url['upload-image'];
+export const PRESIGNED_URL: string = func2url['presigned-url'];
 
 export interface Review {
   id: number;
@@ -103,25 +103,56 @@ export function fileToBase64(file: File, maxSize = 900, quality = 0.65): Promise
   });
 }
 
-export async function uploadImage(file: File, onProgress?: (sizeKb: number) => void): Promise<string> {
-  // Итеративно сжимаем до тех пор пока base64 не станет < 350кб
-  const steps: [number, number][] = [[900, 0.7], [700, 0.6], [500, 0.5], [400, 0.4], [300, 0.35]];
-  let base64 = '';
-  for (const [maxSize, quality] of steps) {
-    base64 = await fileToBase64(file, maxSize, quality);
-    if (base64.length < 350_000) break;
-  }
-  onProgress?.(Math.round(base64.length / 1024));
-  const res = await apiFetch(UPLOAD_URL, {
-    method: 'POST',
-    body: JSON.stringify({ image: base64 }),
+export async function uploadImage(file: File, onProgress?: (msg: string) => void): Promise<string> {
+  // Сжимаем изображение
+  onProgress?.('сжатие...');
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1200;
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+        else { width = Math.round(width * MAX / height); height = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas error')), 'image/jpeg', 0.75);
+    };
+    img.onerror = reject;
+    img.src = url;
   });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || `Ошибка загрузки фото: HTTP ${res.status}`);
+
+  onProgress?.(`сжато до ${Math.round(blob.size / 1024)}кб, получаю URL...`);
+
+  // Получаем presigned URL от бэкенда
+  const res1 = await apiFetch(PRESIGNED_URL, {
+    method: 'POST',
+    body: JSON.stringify({ ext: 'jpg' }),
+  });
+  if (!res1.ok) {
+    const d = await res1.json().catch(() => ({}));
+    throw new Error(d.error || `Ошибка получения URL: HTTP ${res1.status}`);
   }
-  const data = await res.json();
-  return data.url as string;
+  const { upload_url, cdn_url, content_type } = await res1.json();
+
+  onProgress?.(`загружаю в хранилище...`);
+
+  // Загружаем файл напрямую в S3 — без токенов, без лимитов платформы
+  const res2 = await fetch(upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': content_type },
+    body: blob,
+  });
+  if (!res2.ok) {
+    throw new Error(`Ошибка загрузки в хранилище: HTTP ${res2.status}`);
+  }
+
+  onProgress?.(`готово`);
+  return cdn_url as string;
 }
 
 export function formatDate(iso: string): string {

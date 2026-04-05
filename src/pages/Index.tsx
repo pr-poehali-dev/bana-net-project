@@ -95,10 +95,10 @@ const Index = () => {
       const image_urls: string[] = [];
       for (let i = 0; i < uploadedFiles.length; i++) {
         const f = uploadedFiles[i];
-        log(`⬆️ Фото ${i + 1}: ${f.name} (исходник ${Math.round(f.size / 1024)}кб)`);
-        const url = await uploadImage(f, (sizeKb) => log(`   сжато до ${sizeKb}кб, отправляю...`));
+        log(`⬆️ Фото ${i + 1}: ${f.name} (${Math.round(f.size / 1024)}кб)`);
+        const url = await uploadImage(f, (msg) => log(`   [${i + 1}] ${msg}`));
         image_urls.push(url);
-        log(`✅ Фото ${i + 1} загружено: ${url.slice(-30)}`);
+        log(`✅ Фото ${i + 1} загружено`);
       }
 
       const body = JSON.stringify({ ...formData, image_urls });
