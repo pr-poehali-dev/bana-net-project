@@ -25,6 +25,7 @@ const Index = () => {
   const [reviewSearchLink, setReviewSearchLink] = useState('');
   const [emailCopied, setEmailCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const [adminEmail, setAdminEmail] = useState('support@bananet.ru');
   const [adminTelegram, setAdminTelegram] = useState('https://t.me/bananet_support');
@@ -74,31 +75,46 @@ const Index = () => {
     rating: number;
     review_text: string;
   }) => {
+    const logs: string[] = [];
+    const log = (msg: string) => { logs.push(msg); setDebugLogs([...logs]); };
+
+    log(`🔄 Отправка...`);
+    const token = localStorage.getItem('jwt_token');
+    log(`🔑 токен: ${token ? token.slice(0, 20) + '...' : 'ОТСУТСТВУЕТ'}`);
+    log(`📋 ${formData.marketplace}, рейтинг ${formData.rating}`);
+
     if (uploadedFiles.length < 2) {
-      toast({
-        title: "Необходимы изображения",
-        description: "Прикрепите минимум 2 изображения: скриншот отклонённого отзыва из личного кабинета площадки и фотографию купленного товара.",
-        variant: "destructive",
-      });
+      log('❌ Нужно минимум 2 файла');
+      toast({ title: "Необходимы изображения", description: "Прикрепите минимум 2 изображения.", variant: "destructive" });
       return;
     }
 
     setSubmitting(true);
     try {
+      log('📦 Конвертация файлов...');
       const images = await Promise.all(uploadedFiles.map(fileToBase64));
+      log(`✅ ${images.length} файлов готово`);
+
       const body = JSON.stringify({ ...formData, images });
+      log(`📤 POST ${Math.round(body.length / 1024)}кб`);
+
       const res = await apiFetch(REVIEWS_URL, { method: 'POST', body });
+      log(`📥 HTTP ${res.status}`);
 
       if (!res.ok) {
         const data = await res.json();
+        log(`❌ ${JSON.stringify(data)}`);
         throw new Error(data.error || 'Ошибка отправки');
       }
 
+      const result = await res.json();
+      log(`✅ Успех! id=${result.id}`);
       toast({ title: "Отзыв отправлен", description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов." });
       setUploadedFiles([]);
       reloadReviews();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
+      log(`❌ ${msg}`);
       toast({ title: "Ошибка", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
@@ -182,6 +198,8 @@ const Index = () => {
           onRemoveFile={removeFile}
           onSubmit={handleSubmitReview}
           submitting={submitting}
+          debugLogs={debugLogs}
+          userId={userId}
         />
       )}
       {currentView === 'profile' && (
