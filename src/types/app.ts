@@ -3,6 +3,7 @@ import func2url from '../../backend/func2url.json';
 
 export const REVIEWS_URL: string = func2url['reviews'];
 export const TG_MINI_AUTH_URL: string = func2url['tg-mini-auth'];
+export const UPLOAD_URL: string = func2url['upload-image'];
 
 export interface Review {
   id: number;
@@ -101,6 +102,20 @@ export function fileToBase64(file: File): Promise<string> {
     img.onerror = reject;
     img.src = url;
   });
+}
+
+export async function uploadImage(file: File): Promise<string> {
+  const base64 = await fileToBase64(file);
+  const res = await apiFetch(UPLOAD_URL, {
+    method: 'POST',
+    body: JSON.stringify({ image: base64 }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Ошибка загрузки фото: HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return data.url as string;
 }
 
 export function formatDate(iso: string): string {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useReviews } from '@/hooks/useReviews';
-import { apiFetch, fileToBase64, REVIEWS_URL, type Review } from '@/types/app';
+import { apiFetch, uploadImage, REVIEWS_URL, type Review } from '@/types/app';
 import AppNavigation from '@/components/app/AppNavigation';
 import { ReviewDetail } from '@/components/app/ReviewCard';
 import { HomeView, ReviewsView, SearchView, AddReviewView, ProfileView, AdminView, SupportView } from '@/components/app/AppViews';
@@ -91,12 +91,17 @@ const Index = () => {
 
     setSubmitting(true);
     try {
-      log('📦 Конвертация файлов...');
-      const images = await Promise.all(uploadedFiles.map(fileToBase64));
-      log(`✅ ${images.length} файлов готово`);
+      log('📦 Загружаю фото по одному...');
+      const image_urls: string[] = [];
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        log(`⬆️ Фото ${i + 1}/${uploadedFiles.length}...`);
+        const url = await uploadImage(uploadedFiles[i]);
+        image_urls.push(url);
+        log(`✅ Фото ${i + 1} загружено`);
+      }
 
-      const body = JSON.stringify({ ...formData, images });
-      log(`📤 POST ${Math.round(body.length / 1024)}кб`);
+      const body = JSON.stringify({ ...formData, image_urls });
+      log(`📤 POST отзыва ${Math.round(body.length / 1024)}кб`);
 
       const res = await apiFetch(REVIEWS_URL, { method: 'POST', body });
       log(`📥 HTTP ${res.status}`);

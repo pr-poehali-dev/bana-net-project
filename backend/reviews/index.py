@@ -188,11 +188,15 @@ def handle_create_review(event: dict, payload: dict) -> dict:
     product_article = body.get("product_article", "").strip() or None
     product_link = body.get("product_link", "").strip() or None
     seller = body.get("seller", "").strip() or None
+    # Поддерживаем оба формата: image_urls (новый) и images base64 (старый)
+    image_urls_ready = body.get("image_urls", [])
     images_b64 = body.get("images", [])
 
     if not marketplace or not review_text or not rating:
         return json_response(400, {"error": "marketplace, review_text и rating обязательны"})
-    if len(images_b64) < 2:
+
+    total_images = len(image_urls_ready) + len(images_b64)
+    if total_images < 2:
         return json_response(400, {"error": "Необходимо минимум 2 фотографии"})
 
     conn = get_db()
@@ -206,8 +210,10 @@ def handle_create_review(event: dict, payload: dict) -> dict:
         """, (user_id, marketplace, product_article, product_link, seller, rating, review_text))
         review_id = cur.fetchone()[0]
 
-        image_urls = []
-        for img in images_b64[:10]:
+        image_urls = list(image_urls_ready[:10])
+
+        # Если пришли base64 — загружаем (обратная совместимость)
+        for img in images_b64[:max(0, 10 - len(image_urls))]:
             ext = "jpg"
             if "," in img:
                 header, img = img.split(",", 1)
@@ -215,6 +221,8 @@ def handle_create_review(event: dict, payload: dict) -> dict:
                     ext = "png"
             url = upload_image_to_s3(img, ext)
             image_urls.append(url)
+
+        for url in image_urls:
             cur.execute(
                 f"INSERT INTO {schema}review_images (review_id, image_url) VALUES (%s, %s)",
                 (review_id, url)
