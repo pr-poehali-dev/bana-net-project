@@ -1,4 +1,6 @@
 {
+  "reviews-admin": "https://functions.poehali.dev/097fa3a2-45a1-40e6-a330-2d6f71d34c2a",
+  "reviews-public": "https://functions.poehali.dev/21cfc2a0-5671-41c8-b3eb-623cd4a97b50",
   "presigned-url": "https://functions.poehali.dev/f297d154-8ad6-41e4-9f2f-145ce7b31da0",
   "upload-image": "https://functions.poehali.dev/ab217d1d-7b07-4aa0-9a06-3b66a26869e3",
   "reviews": "https://functions.poehali.dev/cc132888-711d-4532-afb7-84aedcf2bb1a",

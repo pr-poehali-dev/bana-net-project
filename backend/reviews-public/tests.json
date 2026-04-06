@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 204
+    },
+    {
+      "name": "GET public reviews returns list",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"reviews": [], "total": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST not allowed",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 405
+    }
+  ]
+}
