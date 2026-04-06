@@ -155,6 +155,9 @@ def handler(event: dict, context) -> dict:
     if method == "POST" and params.get("action") == "submit":
         return handle_submit(event, payload)
 
+    if method == "POST" and params.get("action") == "attach":
+        return handle_attach_image(event, payload)
+
     if method == "GET":
         return handle_get(event, payload)
 
@@ -418,6 +421,47 @@ def handle_submit(event, payload):
         notify_admin(review_id, row[1], row[2], row[3], user_name, row[4], row[5], imgs_count)
 
         return ok({"ok": True, "status": "pending"})
+    finally:
+        conn.close()
+
+
+def handle_attach_image(event, payload):
+    """POST ?action=attach — прикрепить CDN URL фото к отзыву. При is_last=true переводим в pending."""
+    s = schema()
+    user_id = payload["user_id"]
+    body = json.loads(event.get("body") or "{}")
+    review_id = body.get("review_id")
+    image_url = sanitize(body.get("image_url", ""), 2000)
+    is_last = body.get("is_last", False)
+
+    if not review_id or not image_url:
+        return err("review_id и image_url обязательны")
+
+    conn = db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id, status, marketplace, rating, review_text, product_article, seller FROM {s}reviews WHERE id = %s AND user_id = %s",
+            (review_id, user_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            return err("Отзыв не найден", 404)
+
+        cur.execute(f"INSERT INTO {s}review_images (review_id, image_url) VALUES (%s, %s)", (review_id, image_url))
+
+        if is_last:
+            cur.execute(f"UPDATE {s}reviews SET status = 'pending' WHERE id = %s", (review_id,))
+            conn.commit()
+            cur.execute(f"SELECT name FROM {s}users WHERE id = %s", (user_id,))
+            user_name = (cur.fetchone() or ["Пользователь"])[0]
+            cur.execute(f"SELECT COUNT(*) FROM {s}review_images WHERE review_id = %s", (review_id,))
+            imgs_count = cur.fetchone()[0]
+            notify_admin(review_id, row[2], row[3], row[4], user_name, row[5], row[6], imgs_count)
+        else:
+            conn.commit()
+
+        return ok({"ok": True, "review_id": review_id})
     finally:
         conn.close()
 
