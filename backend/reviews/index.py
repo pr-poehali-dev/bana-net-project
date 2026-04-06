@@ -149,9 +149,6 @@ def handler(event: dict, context) -> dict:
     method = event.get("httpMethod", "GET")
     params = event.get("queryStringParameters") or {}
 
-    if method == "POST" and params.get("action") == "upload":
-        return handle_upload_file(event, payload)
-
     if method == "POST" and params.get("action") == "submit":
         return handle_submit(event, payload)
 
