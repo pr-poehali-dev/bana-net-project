@@ -103,26 +103,14 @@ const Index = () => {
       const { id: reviewId } = await r1.json();
       log(`✅ Отзыв создан id=${reviewId}`);
 
-      // Шаг 2: загружаем фото по одному напрямую в S3
+      // Шаг 2: загружаем фото по одному — бэкенд сжимает и сохраняет
       log('🖼️ Шаг 2: загружаю фото...');
       for (let i = 0; i < uploadedFiles.length; i++) {
         const f = uploadedFiles[i];
         const isLast = i === uploadedFiles.length - 1;
         log(`⬆️ Фото ${i + 1}/${uploadedFiles.length}: ${f.name} (${Math.round(f.size / 1024)}кб)`);
-        const cdnUrl = await uploadImage(f, (msg) => log(`   ${msg}`));
-        log(`✅ Загружено, прикрепляю...`);
-
-        // Шаг 3: прикрепляем URL к отзыву
-        const r2 = await apiFetch(`${REVIEWS_URL}?action=attach`, {
-          method: 'POST',
-          body: JSON.stringify({ review_id: reviewId, image_url: cdnUrl, is_last: isLast }),
-        });
-        if (!r2.ok) {
-          const d = await r2.json().catch(() => ({}));
-          log(`❌ Ошибка прикрепления: ${d.error || r2.status}`);
-          throw new Error(d.error || 'Ошибка прикрепления фото');
-        }
-        log(`✅ Фото ${i + 1} прикреплено${isLast ? ' — отзыв отправлен!' : ''}`);
+        await uploadImage(f, reviewId, isLast, (msg) => log(`   ${msg}`));
+        log(`✅ Фото ${i + 1} загружено${isLast ? ' — отзыв отправлен!' : ''}`);
       }
 
       toast({ title: "Отзыв отправлен", description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов." });

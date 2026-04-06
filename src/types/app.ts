@@ -3,7 +3,6 @@ import func2url from '../../backend/func2url.json';
 
 export const REVIEWS_URL: string = func2url['reviews'];
 export const TG_MINI_AUTH_URL: string = func2url['tg-mini-auth'];
-export const PRESIGNED_URL: string = func2url['presigned-url'];
 
 export interface Review {
   id: number;
@@ -81,78 +80,42 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   });
 }
 
-export function fileToBase64(file: File, maxSize = 900, quality = 0.65): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      if (width > maxSize || height > maxSize) {
-        if (width > height) { height = Math.round(height * maxSize / width); width = maxSize; }
-        else { width = Math.round(width * maxSize / height); height = maxSize; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
+export async function uploadImage(
+  file: File,
+  reviewId: number,
+  isLast: boolean,
+  onProgress?: (msg: string) => void
+): Promise<string> {
+  onProgress?.('чтение файла...');
 
-export async function uploadImage(file: File, onProgress?: (msg: string) => void): Promise<string> {
-  // Сжимаем изображение
-  onProgress?.('сжатие...');
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const MAX = 1200;
-      let { width, height } = img;
-      if (width > MAX || height > MAX) {
-        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
-        else { width = Math.round(width * MAX / height); height = MAX; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width; canvas.height = height;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas error')), 'image/jpeg', 0.75);
-    };
-    img.onerror = reject;
-    img.src = url;
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 
-  onProgress?.(`сжато до ${Math.round(blob.size / 1024)}кб, получаю URL...`);
+  onProgress?.(`отправляю на сервер...`);
 
-  // Получаем presigned URL от бэкенда
-  const res1 = await apiFetch(PRESIGNED_URL, {
+  const res = await apiFetch(`${REVIEWS_URL}?action=upload`, {
     method: 'POST',
-    body: JSON.stringify({ ext: 'jpg' }),
+    body: JSON.stringify({
+      review_id: reviewId,
+      file_data: base64,
+      filename: file.name,
+      mime_type: file.type || 'image/jpeg',
+      is_last: isLast,
+    }),
   });
-  if (!res1.ok) {
-    const d = await res1.json().catch(() => ({}));
-    throw new Error(d.error || `Ошибка получения URL: HTTP ${res1.status}`);
-  }
-  const { upload_url, cdn_url, content_type } = await res1.json();
 
-  onProgress?.(`загружаю в хранилище...`);
-
-  // Загружаем файл напрямую в S3 — без токенов, без лимитов платформы
-  const res2 = await fetch(upload_url, {
-    method: 'PUT',
-    headers: { 'Content-Type': content_type },
-    body: blob,
-  });
-  if (!res2.ok) {
-    throw new Error(`Ошибка загрузки в хранилище: HTTP ${res2.status}`);
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.error || `HTTP ${res.status}`);
   }
 
-  onProgress?.(`готово`);
-  return cdn_url as string;
+  const data = await res.json();
+  onProgress?.(`сжато: ${Math.round((data.compressed_size || 0) / 1024)}кб`);
+  return data.file_url as string;
 }
 
 export function formatDate(iso: string): string {
