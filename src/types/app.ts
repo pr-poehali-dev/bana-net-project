@@ -81,22 +81,71 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   });
 }
 
+async function compressImageFile(file: File, maxSizeKb = 800, onProgress?: (msg: string) => void): Promise<string> {
+  const MAX_BYTES = maxSizeKb * 1024;
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  // Если файл уже маленький — возвращаем как есть
+  if (file.size <= MAX_BYTES) {
+    return dataUrl.split(',')[1];
+  }
+
+  onProgress?.(`сжимаю ${Math.round(file.size / 1024)}кб...`);
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      // Уменьшаем размер пропорционально если нужно
+      const MAX_DIM = 1920;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Подбираем качество
+      let quality = 0.85;
+      const tryCompress = () => {
+        const result = canvas.toDataURL('image/jpeg', quality);
+        const bytes = Math.round((result.length - 22) * 3 / 4);
+        if (bytes <= MAX_BYTES || quality <= 0.3) {
+          onProgress?.(`сжато до ${Math.round(bytes / 1024)}кб ✓`);
+          resolve(result.split(',')[1]);
+        } else {
+          quality -= 0.1;
+          tryCompress();
+        }
+      };
+      tryCompress();
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 export async function uploadImage(
   file: File,
   reviewId: number,
   isLast: boolean,
   onProgress?: (msg: string) => void
 ): Promise<string> {
-  // Читаем файл как base64
   onProgress?.('чтение файла...');
-  const base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  const base64 = await compressImageFile(file, 800, onProgress);
 
-  onProgress?.(`${Math.round(file.size / 1024)}кб → отправляю на сервер...`);
+  onProgress?.(`отправляю на сервер...`);
 
   // Бэкенд сжимает через Pillow и кладёт в S3
   const res = await apiFetch(`${REVIEWS_URL}?action=upload`, {
@@ -117,7 +166,6 @@ export async function uploadImage(
   }
 
   const data = await res.json();
-  onProgress?.(`сжато до ${Math.round((data.compressed_size || 0) / 1024)}кб ✓`);
   return data.file_url as string;
 }
 
