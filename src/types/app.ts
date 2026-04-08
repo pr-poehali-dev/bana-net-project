@@ -3,6 +3,7 @@ import func2url from '../../backend/func2url.json';
 
 export const REVIEWS_URL: string = func2url['reviews'];
 export const TG_MINI_AUTH_URL: string = func2url['tg-mini-auth'];
+export const ADMIN_URL: string = func2url['reviews-admin'];
 
 export interface Review {
   id: number;

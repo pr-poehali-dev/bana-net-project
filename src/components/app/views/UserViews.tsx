@@ -1,12 +1,15 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { type Review } from '@/components/app/ReviewCard';
-import { formatDate, apiFetch, REVIEWS_URL } from '@/types/app';
+import { formatDate, apiFetch, REVIEWS_URL, ADMIN_URL } from '@/types/app';
 
 // ─── ProfileView ─────────────────────────────────────────────────────────────
 
@@ -90,8 +93,10 @@ export function ProfileView({ user, reviews }: ProfileViewProps) {
 
 // ─── AdminView ────────────────────────────────────────────────────────────────
 
+interface AdminStats { pending: number; approved: number; rejected: number; draft: number; total: number; }
+interface AdminReview extends Review { author_name: string; author_avatar: string | null; }
+
 interface AdminViewProps {
-  reviews: Review[];
   adminEmail: string;
   adminTelegram: string;
   editingContacts: boolean;
@@ -101,11 +106,9 @@ interface AdminViewProps {
   tempTelegram: string;
   setTempTelegram: (v: string) => void;
   onSaveContacts: () => void;
-  onModerate: () => void;
 }
 
 export function AdminView({
-  reviews,
   adminEmail,
   adminTelegram,
   editingContacts,
@@ -115,8 +118,49 @@ export function AdminView({
   tempTelegram,
   setTempTelegram,
   onSaveContacts,
-  onModerate,
 }: AdminViewProps) {
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [moderating, setModerating] = useState<number | null>(null);
+  const [comments, setComments] = useState<Record<number, string>>({});
+
+  const loadStats = useCallback(async () => {
+    const res = await apiFetch(`${ADMIN_URL}?action=stats`);
+    if (res.ok) setStats(await res.json());
+  }, []);
+
+  const loadReviews = useCallback(async (status: string) => {
+    setLoading(true);
+    const res = await apiFetch(`${ADMIN_URL}?status=${status}&limit=50`);
+    if (res.ok) {
+      const data = await res.json();
+      setReviews(data.reviews ?? []);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  useEffect(() => {
+    loadReviews(statusFilter);
+  }, [statusFilter, loadReviews]);
+
+  const moderate = async (reviewId: number, action: 'approve' | 'reject') => {
+    setModerating(reviewId);
+    await apiFetch(ADMIN_URL, {
+      method: 'PUT',
+      body: JSON.stringify({ review_id: reviewId, action, admin_comment: comments[reviewId] || '' }),
+    });
+    setModerating(null);
+    await Promise.all([loadStats(), loadReviews(statusFilter)]);
+  };
+
+  const starRating = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
+
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
       <div className="container mx-auto px-4">
@@ -131,20 +175,26 @@ export function AdminView({
           <div className="grid gap-4 md:gap-6 md:grid-cols-3 mb-6 md:mb-8">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl gradient-text">8</CardTitle>
+                <CardTitle className="text-2xl gradient-text">
+                  {stats ? stats.pending : <Skeleton className="h-8 w-12" />}
+                </CardTitle>
                 <CardDescription>Ожидают модерации</CardDescription>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl gradient-text">2847</CardTitle>
+                <CardTitle className="text-2xl gradient-text">
+                  {stats ? stats.total : <Skeleton className="h-8 w-16" />}
+                </CardTitle>
                 <CardDescription>Всего отзывов</CardDescription>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl gradient-text">1523</CardTitle>
-                <CardDescription>Пользователей</CardDescription>
+                <CardTitle className="text-2xl gradient-text">
+                  {stats ? stats.approved : <Skeleton className="h-8 w-12" />}
+                </CardTitle>
+                <CardDescription>Опубликовано</CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -152,96 +202,118 @@ export function AdminView({
           <Tabs defaultValue="reviews" className="space-y-6">
             <TabsList>
               <TabsTrigger value="reviews">Модерация</TabsTrigger>
-              <TabsTrigger value="users">Пользователи</TabsTrigger>
               <TabsTrigger value="contacts">Контакты поддержки</TabsTrigger>
             </TabsList>
 
             <TabsContent value="reviews" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Отзывы на модерации</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {reviews.map((review) => (
-                      <div key={review.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-semibold">{review.author_name}</span>
-                              <Badge variant="outline" className="text-xs">{review.marketplace}</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-2">{review.review_text}</p>
-                            {review.images && review.images.length > 0 && (
-                              <div className="flex gap-2 mb-2">
-                                {review.images.map((img, i) => (
-                                  <img key={i} src={img} alt="" className="w-12 h-12 rounded object-cover" />
-                                ))}
-                              </div>
-                            )}
-                            <div className="text-xs text-muted-foreground">
-                              {review.product_article && <>Артикул: {review.product_article} · </>}{formatDate(review.created_at)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={async () => {
-                            await apiFetch(`${REVIEWS_URL}?action=moderate`, { method: 'PUT', body: JSON.stringify({ review_id: review.id, status: 'approved' }) });
-                            onModerate();
-                          }}>
-                            <Icon name="Check" className="w-4 h-4 mr-1" />
-                            Одобрить
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={async () => {
-                            await apiFetch(`${REVIEWS_URL}?action=moderate`, { method: 'PUT', body: JSON.stringify({ review_id: review.id, status: 'rejected' }) });
-                            onModerate();
-                          }}>
-                            <Icon name="X" className="w-4 h-4 mr-1" />
-                            Отклонить
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <div className="flex gap-2 flex-wrap">
+                {(['pending', 'approved', 'rejected'] as const).map(s => (
+                  <Button
+                    key={s}
+                    size="sm"
+                    variant={statusFilter === s ? 'default' : 'outline'}
+                    onClick={() => setStatusFilter(s)}
+                  >
+                    {s === 'pending' ? 'На модерации' : s === 'approved' ? 'Одобрены' : 'Отклонены'}
+                    {stats && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {s === 'pending' ? stats.pending : s === 'approved' ? stats.approved : stats.rejected}
+                      </Badge>
+                    )}
+                  </Button>
+                ))}
+              </div>
 
-            <TabsContent value="users" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Управление пользователями</CardTitle>
+                  <CardTitle>
+                    {statusFilter === 'pending' ? 'Отзывы на модерации' : statusFilter === 'approved' ? 'Одобренные отзывы' : 'Отклонённые отзывы'}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      { name: 'Мария К.', reviews: 5, status: 'active' },
-                      { name: 'Алексей П.', reviews: 3, status: 'active' },
-                      { name: 'Елена С.', reviews: 8, status: 'active' },
-                    ].map((user, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="gradient-bg text-white text-xs">{user.name[0]}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-sm">{user.name}</p>
-                            <p className="text-xs text-muted-foreground">Отзывов: {user.reviews}</p>
+                  {loading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
+                    </div>
+                  ) : reviews.length === 0 ? (
+                    <p className="text-muted-foreground text-sm py-8 text-center">Нет отзывов</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {reviews.map((review) => (
+                        <div key={review.id} className="border rounded-lg p-4">
+                          <div className="flex items-start gap-3 mb-3">
+                            <Avatar className="w-9 h-9 flex-shrink-0">
+                              <AvatarImage src={review.author_avatar ?? ''} />
+                              <AvatarFallback className="gradient-bg text-white text-sm">
+                                {(review.author_name || 'U')[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <span className="font-semibold text-sm">{review.author_name || 'Пользователь'}</span>
+                                <Badge variant="outline" className="text-xs">{review.marketplace}</Badge>
+                                <span className="text-yellow-500 text-sm">{starRating(review.rating || 0)}</span>
+                                <span className="text-xs text-muted-foreground ml-auto">{formatDate(review.created_at)}</span>
+                              </div>
+                              {(review.product_article || review.seller) && (
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  {review.product_article && <>Артикул: {review.product_article}</>}
+                                  {review.product_article && review.seller && ' · '}
+                                  {review.seller && <>Продавец: {review.seller}</>}
+                                </p>
+                              )}
+                              <p className="text-sm mb-2">{review.review_text}</p>
+                              {review.images && review.images.length > 0 && (
+                                <div className="flex gap-2 flex-wrap mb-2">
+                                  {review.images.map((img, i) => (
+                                    <a key={i} href={img} target="_blank" rel="noreferrer">
+                                      <img src={img} alt="" className="w-16 h-16 rounded object-cover border hover:opacity-80 transition-opacity" />
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                              {review.admin_comment && (
+                                <p className="text-xs text-muted-foreground italic border-l-2 pl-2 mb-2">
+                                  Комментарий: {review.admin_comment}
+                                </p>
+                              )}
+                            </div>
                           </div>
+
+                          {statusFilter === 'pending' && (
+                            <div className="space-y-2 mt-2">
+                              <Textarea
+                                placeholder="Комментарий для пользователя (необязательно)"
+                                className="text-sm resize-none h-16"
+                                value={comments[review.id] || ''}
+                                onChange={e => setComments(prev => ({ ...prev, [review.id]: e.target.value }))}
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  disabled={moderating === review.id}
+                                  onClick={() => moderate(review.id, 'approve')}
+                                >
+                                  <Icon name="Check" className="w-4 h-4 mr-1" />
+                                  {moderating === review.id ? 'Сохраняю...' : 'Одобрить'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={moderating === review.id}
+                                  onClick={() => moderate(review.id, 'reject')}
+                                >
+                                  <Icon name="X" className="w-4 h-4 mr-1" />
+                                  Отклонить
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            <Icon name="Ban" className="w-4 h-4 mr-1" />
-                            Заблокировать
-                          </Button>
-                          <Button variant="destructive" size="sm">
-                            <Icon name="Trash2" className="w-4 h-4 mr-1" />
-                            Удалить
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -256,11 +328,7 @@ export function AdminView({
                   <div>
                     <label className="text-sm font-medium mb-2 block">Email поддержки</label>
                     {editingContacts ? (
-                      <Input
-                        value={tempEmail}
-                        onChange={(e) => setTempEmail(e.target.value)}
-                        placeholder="support@bananet.ru"
-                      />
+                      <Input value={tempEmail} onChange={(e) => setTempEmail(e.target.value)} placeholder="support@bananet.ru" />
                     ) : (
                       <p className="text-sm p-2 border rounded">{adminEmail}</p>
                     )}
@@ -268,11 +336,7 @@ export function AdminView({
                   <div>
                     <label className="text-sm font-medium mb-2 block">Ссылка на Telegram</label>
                     {editingContacts ? (
-                      <Input
-                        value={tempTelegram}
-                        onChange={(e) => setTempTelegram(e.target.value)}
-                        placeholder="https://t.me/..."
-                      />
+                      <Input value={tempTelegram} onChange={(e) => setTempTelegram(e.target.value)} placeholder="https://t.me/..." />
                     ) : (
                       <p className="text-sm p-2 border rounded">{adminTelegram}</p>
                     )}
@@ -283,19 +347,10 @@ export function AdminView({
                         <Icon name="Check" className="w-4 h-4 mr-2" />
                         Сохранить
                       </Button>
-                      <Button variant="outline" onClick={() => setEditingContacts(false)}>
-                        Отмена
-                      </Button>
+                      <Button variant="outline" onClick={() => setEditingContacts(false)}>Отмена</Button>
                     </div>
                   ) : (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setTempEmail(adminEmail);
-                        setTempTelegram(adminTelegram);
-                        setEditingContacts(true);
-                      }}
-                    >
+                    <Button variant="outline" onClick={() => { setTempEmail(adminEmail); setTempTelegram(adminTelegram); setEditingContacts(true); }}>
                       <Icon name="Pencil" className="w-4 h-4 mr-2" />
                       Редактировать
                     </Button>

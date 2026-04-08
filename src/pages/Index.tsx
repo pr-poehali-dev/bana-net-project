@@ -38,7 +38,6 @@ const Index = () => {
 
   const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews({ userId });
   const { reviews: myReviews } = useReviews({ my: true, userId });
-  const { reviews: pendingReviews } = useReviews({ status: 'pending', userId: isAdmin ? userId : null });
 
   const stats = {
     totalReviews: reviews.length,
@@ -214,7 +213,6 @@ const Index = () => {
       )}
       {currentView === 'admin' && isAdmin && (
         <AdminView
-          reviews={pendingReviews}
           adminEmail={adminEmail}
           adminTelegram={adminTelegram}
           editingContacts={editingContacts}
@@ -224,7 +222,6 @@ const Index = () => {
           tempTelegram={tempTelegram}
           setTempTelegram={setTempTelegram}
           onSaveContacts={handleSaveContacts}
-          onModerate={reloadReviews}
         />
       )}
       {currentView === 'support' && (
