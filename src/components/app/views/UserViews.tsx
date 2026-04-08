@@ -122,18 +122,21 @@ export function AdminView({
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [moderating, setModerating] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, string>>({});
 
   const loadStats = useCallback(async () => {
     const res = await apiFetch(`${ADMIN_URL}?action=stats`);
+    if (res.status === 401) { setAuthError(true); return; }
     if (res.ok) setStats(await res.json());
   }, []);
 
   const loadReviews = useCallback(async (status: string) => {
     setLoading(true);
     const res = await apiFetch(`${ADMIN_URL}?status=${status}&limit=50`);
+    if (res.status === 401) { setAuthError(true); setLoading(false); return; }
     if (res.ok) {
       const data = await res.json();
       setReviews(data.reviews ?? []);
@@ -160,6 +163,25 @@ export function AdminView({
   };
 
   const starRating = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
+
+  if (authError) {
+    return (
+      <div className="min-h-screen pt-20 md:pt-24 pb-8 flex items-center justify-center">
+        <Card className="max-w-sm w-full mx-4">
+          <CardHeader className="text-center">
+            <Icon name="ShieldAlert" className="w-12 h-12 mx-auto mb-3 text-destructive" />
+            <CardTitle>Сессия истекла</CardTitle>
+            <CardDescription>Перезайдите в приложение через Telegram, чтобы обновить токен</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full gradient-bg" onClick={() => { localStorage.clear(); window.location.reload(); }}>
+              Выйти и войти снова
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">

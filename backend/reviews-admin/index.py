@@ -37,15 +37,19 @@ def schema():
 
 def auth_admin(event):
     h = event.get("headers", {})
+    print("DEBUG headers keys:", list(h.keys()))
     token = (h.get("X-Authorization") or h.get("x-authorization") or h.get("Authorization") or h.get("authorization") or "")
+    print("DEBUG token prefix:", token[:30] if token else "EMPTY")
     if not token.startswith("Bearer "):
         return None
     try:
         payload = jwt.decode(token[7:], os.environ["JWT_SECRET"], algorithms=["HS256"])
+        print("DEBUG payload is_admin:", payload.get("is_admin"))
         if not payload.get("is_admin"):
             return None
         return payload
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as e:
+        print("DEBUG jwt error:", e)
         return None
 
 

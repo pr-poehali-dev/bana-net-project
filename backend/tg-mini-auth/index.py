@@ -77,7 +77,7 @@ def create_jwt_token(user_id: int, is_admin: int) -> str:
     payload = {
         "user_id": user_id,
         "is_admin": is_admin,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+        "exp": datetime.now(timezone.utc) + timedelta(days=30),
         "iat": datetime.now(timezone.utc),
     }
     return jwt.encode(payload, secret, algorithm="HS256")
