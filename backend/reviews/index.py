@@ -164,6 +164,9 @@ def handler(event: dict, context) -> dict:
     if method == "POST":
         return handle_create(event, payload)
 
+    if method == "PUT" and params.get("action") == "resubmit":
+        return handle_resubmit(event, payload)
+
     if method == "PUT":
         return handle_moderate(event, payload)
 
@@ -212,7 +215,7 @@ def handle_get(event, payload):
             if my_only:
                 conds.append("r.user_id = %s"); args.append(user_id)
             else:
-                conds.append("(r.status = 'approved' OR r.user_id = %s)"); args.append(user_id)
+                conds.append("(r.status = 'approved' OR (r.user_id = %s AND r.status != 'rejected'))"); args.append(user_id)
         else:
             if status_filter:
                 conds.append("r.status = %s"); args.append(status_filter)
@@ -465,6 +468,59 @@ def handle_attach_image(event, payload):
             conn.commit()
 
         return ok({"ok": True, "review_id": review_id})
+    finally:
+        conn.close()
+
+
+def handle_resubmit(event, payload):
+    """PUT ?action=resubmit — пользователь исправляет отклонённый отзыв и отправляет повторно на модерацию."""
+    s = schema()
+    user_id = payload["user_id"]
+    body = json.loads(event.get("body") or "{}")
+
+    review_id = body.get("review_id")
+    marketplace = sanitize(body.get("marketplace", ""), 50)
+    review_text = sanitize(body.get("review_text", ""), 5000)
+    rating = body.get("rating")
+    product_article = sanitize(body.get("product_article", ""), 255) or None
+    product_link = sanitize(body.get("product_link", ""), 2000) or None
+    seller = sanitize(body.get("seller", ""), 255) or None
+
+    if not review_id or not marketplace or not review_text or not rating:
+        return err("review_id, marketplace, review_text и rating обязательны")
+
+    try:
+        rating = int(rating)
+        if not (1 <= rating <= 5):
+            return err("rating должен быть от 1 до 5")
+    except (ValueError, TypeError):
+        return err("rating должен быть числом")
+
+    conn = db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id FROM {s}reviews WHERE id = %s AND user_id = %s AND status = 'rejected'",
+            (review_id, user_id),
+        )
+        if not cur.fetchone():
+            return err("Отзыв не найден или не отклонён", 404)
+
+        # Удаляем старые файлы — пользователь загрузит новые
+        cur.execute(f"DELETE FROM {s}review_files WHERE review_id = %s", (review_id,))
+        cur.execute(f"DELETE FROM {s}review_images WHERE review_id = %s", (review_id,))
+
+        # Обновляем поля и переводим в draft (ждём новые фото)
+        cur.execute(
+            f"""UPDATE {s}reviews
+                SET marketplace = %s, product_article = %s, product_link = %s,
+                    seller = %s, rating = %s, review_text = %s,
+                    status = 'draft', admin_comment = NULL, moderated_at = NULL, updated_at = NOW()
+                WHERE id = %s""",
+            (marketplace, product_article, product_link, seller, rating, review_text, review_id),
+        )
+        conn.commit()
+        return ok({"id": review_id, "status": "draft"}, 200)
     finally:
         conn.close()
 

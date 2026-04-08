@@ -32,6 +32,7 @@ const Index = () => {
   const [editingContacts, setEditingContacts] = useState(false);
   const [tempEmail, setTempEmail] = useState('');
   const [tempTelegram, setTempTelegram] = useState('');
+  const [resubmitData, setResubmitData] = useState<Review | null>(null);
 
   const userId = user?.id ?? null;
   const isAdmin = user?.is_admin === 1;
@@ -53,6 +54,13 @@ const Index = () => {
   const openReviewDetail = (review: Review) => {
     setSelectedReview(review);
     setCurrentView('review-detail');
+  };
+
+  const handleResubmit = (review: Review) => {
+    setResubmitData(review);
+    setUploadedFiles([]);
+    setDebugLogs([]);
+    setCurrentView('add');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,20 +98,41 @@ const Index = () => {
 
     setSubmitting(true);
     try {
-      // Шаг 1: создаём отзыв без фото (~1кб)
-      log('📋 Шаг 1: создаю отзыв...');
-      const r1 = await apiFetch(REVIEWS_URL, { method: 'POST', body: JSON.stringify(formData) });
-      log(`📥 HTTP ${r1.status}`);
-      if (!r1.ok) {
-        const d = await r1.json().catch(() => ({}));
-        log(`❌ ${d.error || 'ошибка'}`);
-        throw new Error(d.error || `HTTP ${r1.status}`);
-      }
-      const { id: reviewId } = await r1.json();
-      log(`✅ Отзыв создан id=${reviewId}`);
+      let reviewId: number;
 
-      // Шаг 2: загружаем фото по одному — бэкенд сжимает и сохраняет
-      log('🖼️ Шаг 2: загружаю фото...');
+      if (resubmitData) {
+        // Повторная отправка отклонённого отзыва
+        log(`🔄 Повторная отправка отзыва #${resubmitData.id}...`);
+        const r1 = await apiFetch(`${REVIEWS_URL}?action=resubmit`, {
+          method: 'PUT',
+          body: JSON.stringify({ review_id: resubmitData.id, ...formData }),
+        });
+        log(`📥 HTTP ${r1.status}`);
+        if (!r1.ok) {
+          const d = await r1.json().catch(() => ({}));
+          log(`❌ ${d.error || 'ошибка'}`);
+          throw new Error(d.error || `HTTP ${r1.status}`);
+        }
+        const data = await r1.json();
+        reviewId = data.id;
+        log(`✅ Отзыв обновлён id=${reviewId}`);
+      } else {
+        // Шаг 1: создаём новый отзыв без фото
+        log('📋 Шаг 1: создаю отзыв...');
+        const r1 = await apiFetch(REVIEWS_URL, { method: 'POST', body: JSON.stringify(formData) });
+        log(`📥 HTTP ${r1.status}`);
+        if (!r1.ok) {
+          const d = await r1.json().catch(() => ({}));
+          log(`❌ ${d.error || 'ошибка'}`);
+          throw new Error(d.error || `HTTP ${r1.status}`);
+        }
+        const data = await r1.json();
+        reviewId = data.id;
+        log(`✅ Отзыв создан id=${reviewId}`);
+      }
+
+      // Загружаем фото по одному
+      log('🖼️ Загружаю фото...');
       for (let i = 0; i < uploadedFiles.length; i++) {
         const f = uploadedFiles[i];
         const isLast = i === uploadedFiles.length - 1;
@@ -114,6 +143,7 @@ const Index = () => {
 
       toast({ title: "Отзыв отправлен", description: "Ваш отзыв отправлен на модерацию. Ожидайте 24-48 часов." });
       setUploadedFiles([]);
+      setResubmitData(null);
       reloadReviews();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -203,12 +233,21 @@ const Index = () => {
           submitting={submitting}
           debugLogs={debugLogs}
           userId={userId}
+          initialData={resubmitData ? {
+            marketplace: resubmitData.marketplace,
+            product_article: resubmitData.product_article ?? '',
+            product_link: resubmitData.product_link ?? '',
+            seller: resubmitData.seller ?? '',
+            rating: resubmitData.rating,
+            review_text: resubmitData.review_text,
+          } : undefined}
         />
       )}
       {currentView === 'profile' && (
         <ProfileView
           user={user}
           reviews={myReviews}
+          onResubmit={handleResubmit}
         />
       )}
       {currentView === 'admin' && isAdmin && (

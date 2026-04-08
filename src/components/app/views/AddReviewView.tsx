@@ -24,12 +24,13 @@ interface AddReviewViewProps {
   submitting: boolean;
   debugLogs: string[];
   userId: number | null;
+  initialData?: Partial<AddReviewFormData>;
 }
 
-export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, debugLogs, userId }: AddReviewViewProps) {
+export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, debugLogs, userId, initialData }: AddReviewViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [marketplace, setMarketplace] = useState('');
-  const [productArticle, setProductArticle] = useState('');
+  const [marketplace, setMarketplace] = useState(initialData?.marketplace ?? '');
+  const [productArticle, setProductArticle] = useState(initialData?.product_article ?? '');
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,10 +39,10 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
     const interval = setInterval(() => setToken(localStorage.getItem('jwt_token')), 1000);
     return () => clearInterval(interval);
   }, []);
-  const [productLink, setProductLink] = useState('');
-  const [seller, setSeller] = useState('');
-  const [rating, setRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
+  const [productLink, setProductLink] = useState(initialData?.product_link ?? '');
+  const [seller, setSeller] = useState(initialData?.seller ?? '');
+  const [rating, setRating] = useState(initialData?.rating ?? 0);
+  const [reviewText, setReviewText] = useState(initialData?.review_text ?? '');
 
   const handleSubmit = () => {
     onSubmit({
