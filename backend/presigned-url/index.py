@@ -72,4 +72,5 @@ def handler(event: dict, context) -> dict:
         ExpiresIn=300,
     )
 
+    print(f"[presigned-url] user={payload.get('user_id')} key={filename} ct={content_type}")
     return ok({"upload_url": upload_url, "cdn_url": cdn_url, "content_type": content_type})

@@ -431,7 +431,10 @@ def handle_attach_image(event, payload):
     image_url = sanitize(body.get("image_url", ""), 2000)
     is_last = body.get("is_last", False)
 
+    print(f"[attach] user={user_id} review_id={review_id} is_last={is_last} url={image_url[:60] if image_url else None}")
+
     if not review_id or not image_url:
+        print(f"[attach] ERROR: missing review_id or image_url")
         return err("review_id и image_url обязательны")
 
     conn = db()

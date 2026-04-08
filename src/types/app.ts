@@ -109,40 +109,46 @@ export async function uploadImage(
     img.src = url;
   });
 
-  onProgress?.(`${Math.round(blob.size / 1024)}кб, получаю URL...`);
+  onProgress?.(`сжато: ${Math.round(blob.size / 1024)}кб → получаю presigned URL...`);
 
   // Получаем presigned URL
   const r1 = await apiFetch(PRESIGNED_URL, {
     method: 'POST',
     body: JSON.stringify({ ext: 'jpg' }),
   });
+  onProgress?.(`presigned-url: HTTP ${r1.status}`);
   if (!r1.ok) {
     const d = await r1.json().catch(() => ({}));
-    throw new Error(d.error || `Ошибка получения URL: HTTP ${r1.status}`);
+    throw new Error(d.error || `Ошибка получения presigned URL: HTTP ${r1.status}`);
   }
   const { upload_url, cdn_url, content_type } = await r1.json();
+  onProgress?.(`upload_url получен, загружаю в S3...`);
 
   // Грузим напрямую в S3 — минуя платформу
-  onProgress?.('загрузка в хранилище...');
   const r2 = await fetch(upload_url, {
     method: 'PUT',
     headers: { 'Content-Type': content_type },
     body: blob,
   });
-  if (!r2.ok) throw new Error(`Ошибка загрузки: HTTP ${r2.status}`);
+  onProgress?.(`S3 PUT: HTTP ${r2.status}`);
+  if (!r2.ok) {
+    const text = await r2.text().catch(() => '');
+    throw new Error(`Ошибка загрузки в S3: HTTP ${r2.status} ${text.slice(0, 100)}`);
+  }
 
   // Прикрепляем CDN URL к отзыву
-  onProgress?.('прикрепляю...');
+  onProgress?.(`прикрепляю к отзыву (is_last=${isLast})...`);
   const r3 = await apiFetch(`${REVIEWS_URL}?action=attach`, {
     method: 'POST',
     body: JSON.stringify({ review_id: reviewId, image_url: cdn_url, is_last: isLast }),
   });
+  onProgress?.(`attach: HTTP ${r3.status}`);
   if (!r3.ok) {
     const d = await r3.json().catch(() => ({}));
     throw new Error(d.error || `Ошибка прикрепления: HTTP ${r3.status}`);
   }
 
-  onProgress?.('готово');
+  onProgress?.(`✓ cdn_url: ${cdn_url.slice(-30)}`);
   return cdn_url as string;
 }
 
