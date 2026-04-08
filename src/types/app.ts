@@ -3,7 +3,6 @@ import func2url from '../../backend/func2url.json';
 
 export const REVIEWS_URL: string = func2url['reviews'];
 export const TG_MINI_AUTH_URL: string = func2url['tg-mini-auth'];
-export const PRESIGNED_URL: string = func2url['presigned-url'];
 
 export interface Review {
   id: number;
@@ -87,69 +86,38 @@ export async function uploadImage(
   isLast: boolean,
   onProgress?: (msg: string) => void
 ): Promise<string> {
-  // Сжимаем на клиенте до 1200px, jpeg 0.75
-  onProgress?.('сжатие...');
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const MAX = 1200;
-      let { width, height } = img;
-      if (width > MAX || height > MAX) {
-        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
-        else { width = Math.round(width * MAX / height); height = MAX; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width; canvas.height = height;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas error')), 'image/jpeg', 0.75);
-    };
-    img.onerror = reject;
-    img.src = url;
+  // Читаем файл как base64
+  onProgress?.('чтение файла...');
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 
-  onProgress?.(`сжато: ${Math.round(blob.size / 1024)}кб → получаю presigned URL...`);
+  onProgress?.(`${Math.round(file.size / 1024)}кб → отправляю на сервер...`);
 
-  // Получаем presigned URL
-  const r1 = await apiFetch(PRESIGNED_URL, {
+  // Бэкенд сжимает через Pillow и кладёт в S3
+  const res = await apiFetch(`${REVIEWS_URL}?action=upload`, {
     method: 'POST',
-    body: JSON.stringify({ ext: 'jpg' }),
+    body: JSON.stringify({
+      review_id: reviewId,
+      file_data: base64,
+      filename: file.name,
+      mime_type: file.type || 'image/jpeg',
+      is_last: isLast,
+    }),
   });
-  onProgress?.(`presigned-url: HTTP ${r1.status}`);
-  if (!r1.ok) {
-    const d = await r1.json().catch(() => ({}));
-    throw new Error(d.error || `Ошибка получения presigned URL: HTTP ${r1.status}`);
-  }
-  const { upload_url, cdn_url, content_type } = await r1.json();
-  onProgress?.(`upload_url получен, загружаю в S3...`);
 
-  // Грузим напрямую в S3 — минуя платформу
-  const r2 = await fetch(upload_url, {
-    method: 'PUT',
-    headers: { 'Content-Type': content_type },
-    body: blob,
-  });
-  onProgress?.(`S3 PUT: HTTP ${r2.status}`);
-  if (!r2.ok) {
-    const text = await r2.text().catch(() => '');
-    throw new Error(`Ошибка загрузки в S3: HTTP ${r2.status} ${text.slice(0, 100)}`);
+  onProgress?.(`upload: HTTP ${res.status}`);
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.error || `Ошибка загрузки: HTTP ${res.status}`);
   }
 
-  // Прикрепляем CDN URL к отзыву
-  onProgress?.(`прикрепляю к отзыву (is_last=${isLast})...`);
-  const r3 = await apiFetch(`${REVIEWS_URL}?action=attach`, {
-    method: 'POST',
-    body: JSON.stringify({ review_id: reviewId, image_url: cdn_url, is_last: isLast }),
-  });
-  onProgress?.(`attach: HTTP ${r3.status}`);
-  if (!r3.ok) {
-    const d = await r3.json().catch(() => ({}));
-    throw new Error(d.error || `Ошибка прикрепления: HTTP ${r3.status}`);
-  }
-
-  onProgress?.(`✓ cdn_url: ${cdn_url.slice(-30)}`);
-  return cdn_url as string;
+  const data = await res.json();
+  onProgress?.(`сжато до ${Math.round((data.compressed_size || 0) / 1024)}кб ✓`);
+  return data.file_url as string;
 }
 
 export function formatDate(iso: string): string {
