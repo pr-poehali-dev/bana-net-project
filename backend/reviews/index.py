@@ -110,6 +110,36 @@ def upload_to_s3(data: bytes, filename: str) -> str:
     return f"https://cdn.poehali.dev/projects/{access_key}/bucket/{key}"
 
 
+def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not bot_token or not telegram_id:
+        return
+    site_url = os.environ.get("SITE_URL", "")
+    if status == "approved":
+        text = (
+            f"✅ <b>Ваш отзыв #{review_id} опубликован!</b>\n\n"
+            f"🏪 Маркетплейс: {marketplace}\n\n"
+            f"Ваш отзыв прошёл модерацию и теперь виден всем пользователям."
+            + (f"\n\n🔗 {site_url}" if site_url else "")
+        )
+    else:
+        text = (
+            f"❌ <b>Ваш отзыв #{review_id} отклонён</b>\n\n"
+            f"🏪 Маркетплейс: {marketplace}\n\n"
+            + (f"💬 <b>Причина:</b> {admin_comment}\n\n" if admin_comment else "")
+            + "Вы можете исправить отзыв и отправить повторно в разделе «Профиль»."
+            + (f"\n\n🔗 {site_url}" if site_url else "")
+        )
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": telegram_id, "text": text, "parse_mode": "HTML"},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
 def notify_admin(review_id, marketplace, rating, review_text, user_name, product_article, seller, images_count):
     admin_id = os.environ.get("ADMIN_TELEGRAM_ID")
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -545,19 +575,32 @@ def handle_moderate(event, payload):
     conn = db()
     try:
         cur = conn.cursor()
+
+        # Получаем данные отзыва и telegram_id автора для уведомления
+        cur.execute(
+            f"""SELECT r.marketplace, u.telegram_id
+                FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id
+                WHERE r.id = %s""",
+            (review_id,),
+        )
+        row = cur.fetchone()
+
         cur.execute(
             f"""UPDATE {s}reviews
                 SET status = %s, admin_comment = %s, moderated_at = NOW()
                 WHERE id = %s""",
             (status, admin_comment or None, review_id),
         )
-        # Лог модерации
         cur.execute(
             f"""INSERT INTO {s}moderation_logs (review_id, admin_id, action, comment)
                 VALUES (%s, %s, %s, %s)""",
             (review_id, admin_id, status, admin_comment or None),
         )
         conn.commit()
+
+        if row:
+            notify_user(row[1], review_id, status, row[0], admin_comment)
+
         return ok({"ok": True, "status": status, "review_id": review_id})
     finally:
         conn.close()
