@@ -530,7 +530,7 @@ def handle_resubmit(event, payload):
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT id FROM {s}reviews WHERE id = %s AND user_id = %s AND status = 'rejected'",
+            f"SELECT id FROM {s}reviews WHERE id = %s AND user_id = %s AND status IN ('rejected', 'draft')",
             (review_id, user_id),
         )
         if not cur.fetchone():
