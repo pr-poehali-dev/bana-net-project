@@ -6,9 +6,9 @@
 import json
 import os
 import re
+import urllib.request
 import psycopg2
 import jwt
-import requests
 
 
 def cors():
@@ -84,12 +84,15 @@ def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
             + (f"\n\n🔗 {site_url}" if site_url else "")
         )
     try:
-        resp = requests.post(
+        payload = json.dumps({"chat_id": telegram_id, "text": text, "parse_mode": "HTML"}).encode()
+        req = urllib.request.Request(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": telegram_id, "text": text, "parse_mode": "HTML"},
-            timeout=5,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
-        print(f"[notify_user] tg_response={resp.status_code} body={resp.text[:200]}")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            print(f"[notify_user] tg_response={resp.status} body={resp.read(200)}")
     except Exception as e:
         print(f"[notify_user] ERROR: {e}")
 
