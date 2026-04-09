@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,23 +22,14 @@ interface AddReviewViewProps {
   onRemoveFile: (index: number) => void;
   onSubmit: (data: AddReviewFormData) => void;
   submitting: boolean;
-  debugLogs: string[];
   userId: number | null;
   initialData?: Partial<AddReviewFormData>;
 }
 
-export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, debugLogs, userId, initialData }: AddReviewViewProps) {
+export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, userId, initialData }: AddReviewViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [marketplace, setMarketplace] = useState(initialData?.marketplace ?? '');
   const [productArticle, setProductArticle] = useState(initialData?.product_article ?? '');
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    const t = localStorage.getItem('jwt_token');
-    setToken(t);
-    const interval = setInterval(() => setToken(localStorage.getItem('jwt_token')), 1000);
-    return () => clearInterval(interval);
-  }, []);
   const [productLink, setProductLink] = useState(initialData?.product_link ?? '');
   const [seller, setSeller] = useState(initialData?.seller ?? '');
   const [rating, setRating] = useState(initialData?.rating ?? 0);
@@ -221,22 +212,6 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                     <p className="text-xs text-muted-foreground">
                       Загружено: {uploadedFiles.length} из минимум 2
                     </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-lg border border-gray-700 bg-gray-950 p-3 text-left">
-                <p className="text-xs font-mono text-gray-400 mb-2">🔍 Диагностика:</p>
-                <div className="space-y-1">
-                  <p className="text-xs font-mono text-gray-300">👤 userId: <span className={userId ? 'text-green-400' : 'text-red-400'}>{userId ?? 'нет'}</span></p>
-                  <p className="text-xs font-mono text-gray-300">🔑 токен: <span className={token ? 'text-green-400' : 'text-red-400'}>{token ? token.slice(0, 25) + '...' : 'ОТСУТСТВУЕТ'}</span></p>
-                  <p className="text-xs font-mono text-gray-300">🖼️ файлов: <span className={uploadedFiles.length >= 2 ? 'text-green-400' : 'text-yellow-400'}>{uploadedFiles.length}</span></p>
-                </div>
-                {debugLogs.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-gray-700 space-y-1 max-h-40 overflow-y-auto">
-                    {debugLogs.map((log, i) => (
-                      <p key={i} className={`text-xs font-mono ${log.startsWith('❌') ? 'text-red-400' : log.startsWith('✅') ? 'text-green-400' : 'text-gray-300'}`}>{log}</p>
-                    ))}
                   </div>
                 )}
               </div>

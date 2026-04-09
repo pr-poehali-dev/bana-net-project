@@ -231,8 +231,6 @@ const Index = () => {
           onRemoveFile={removeFile}
           onSubmit={handleSubmitReview}
           submitting={submitting}
-          debugLogs={debugLogs}
-          userId={userId}
           initialData={resubmitData ? {
             marketplace: resubmitData.marketplace,
             product_article: resubmitData.product_article ?? '',

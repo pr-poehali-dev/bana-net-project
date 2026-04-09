@@ -38,19 +38,15 @@ def schema():
 
 def auth_admin(event):
     h = event.get("headers", {})
-    print("DEBUG headers keys:", list(h.keys()))
     token = (h.get("X-Authorization") or h.get("x-authorization") or h.get("Authorization") or h.get("authorization") or "")
-    print("DEBUG token prefix:", token[:30] if token else "EMPTY")
     if not token.startswith("Bearer "):
         return None
     try:
         payload = jwt.decode(token[7:], os.environ["JWT_SECRET"], algorithms=["HS256"])
-        print("DEBUG payload is_admin:", payload.get("is_admin"))
         if not payload.get("is_admin"):
             return None
         return payload
-    except jwt.PyJWTError as e:
-        print("DEBUG jwt error:", e)
+    except jwt.PyJWTError:
         return None
 
 
@@ -63,9 +59,7 @@ def sanitize(text, max_len=2000):
 
 def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    print(f"[notify_user] telegram_id={telegram_id} review_id={review_id} status={status} has_token={bool(bot_token)}")
     if not bot_token or not telegram_id:
-        print(f"[notify_user] SKIP — bot_token={bool(bot_token)} telegram_id={telegram_id}")
         return
     site_url = os.environ.get("SITE_URL", "")
     if status == "approved":
@@ -91,10 +85,9 @@ def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"[notify_user] tg_response={resp.status} body={resp.read(200)}")
-    except Exception as e:
-        print(f"[notify_user] ERROR: {e}")
+        urllib.request.urlopen(req, timeout=10)
+    except Exception:
+        pass
 
 
 def handler(event: dict, context) -> dict:
