@@ -63,7 +63,9 @@ def sanitize(text, max_len=2000):
 
 def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    print(f"[notify_user] telegram_id={telegram_id} review_id={review_id} status={status} has_token={bool(bot_token)}")
     if not bot_token or not telegram_id:
+        print(f"[notify_user] SKIP — bot_token={bool(bot_token)} telegram_id={telegram_id}")
         return
     site_url = os.environ.get("SITE_URL", "")
     if status == "approved":
@@ -82,13 +84,14 @@ def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
             + (f"\n\n🔗 {site_url}" if site_url else "")
         )
     try:
-        requests.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             json={"chat_id": telegram_id, "text": text, "parse_mode": "HTML"},
             timeout=5,
         )
-    except Exception:
-        pass
+        print(f"[notify_user] tg_response={resp.status_code} body={resp.text[:200]}")
+    except Exception as e:
+        print(f"[notify_user] ERROR: {e}")
 
 
 def handler(event: dict, context) -> dict:
@@ -267,17 +270,25 @@ def handle_moderate(event, payload):
     conn = db()
     try:
         cur = conn.cursor()
+
+        # Получаем telegram_id автора ДО изменений
+        cur.execute(
+            f"SELECT u.telegram_id, r.marketplace FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id WHERE r.id = %s",
+            (review_id,),
+        )
+        author_row = cur.fetchone()
+        if not author_row:
+            return err("Отзыв не найден", 404)
+
+        telegram_id = author_row[0]
+        marketplace = author_row[1]
+
         cur.execute(
             f"""UPDATE {s}reviews
                 SET status = %s, admin_comment = %s, moderated_at = NOW()
-                WHERE id = %s
-                RETURNING id, marketplace, product_article""",
+                WHERE id = %s""",
             (status, admin_comment or None, review_id),
         )
-        row = cur.fetchone()
-        if not row:
-            return err("Отзыв не найден", 404)
-
         cur.execute(
             f"""INSERT INTO {s}moderation_logs (review_id, admin_id, action, comment)
                 VALUES (%s, %s, %s, %s)""",
@@ -285,15 +296,8 @@ def handle_moderate(event, payload):
         )
         conn.commit()
 
-        if row:
-            cur.execute(
-                f"SELECT u.telegram_id FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id WHERE r.id = %s",
-                (review_id,),
-            )
-            user_row = cur.fetchone()
-            if user_row:
-                notify_user(user_row[0], review_id, status, row[1], admin_comment)
+        notify_user(telegram_id, review_id, status, marketplace, admin_comment)
 
-        return ok({"ok": True, "status": status, "review_id": review_id, "marketplace": row[1]})
+        return ok({"ok": True, "status": status, "review_id": review_id, "marketplace": marketplace})
     finally:
         conn.close()
