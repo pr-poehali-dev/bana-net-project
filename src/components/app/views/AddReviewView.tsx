@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Icon from '@/components/ui/icon';
 
 export interface AddReviewFormData {
@@ -78,26 +78,20 @@ function FieldError({ msg }: { msg: string | null }) {
   );
 }
 
-// ─── InfoTooltip ─────────────────────────────────────────────────────────────
+// ─── InfoPopover ──────────────────────────────────────────────────────────────
 
-function InfoTooltip({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+function InfoPopover({ children, side = 'top' }: { children: React.ReactNode; side?: 'top' | 'bottom' | 'left' | 'right' }) {
   return (
-    <Tooltip open={open} onOpenChange={setOpen}>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="p-0.5 align-middle"
-          onClick={() => setOpen(v => !v)}
-          onBlur={() => setOpen(false)}
-        >
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="p-0.5 align-middle">
           <Icon name="Info" className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
         </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-sm p-3 z-50">
+      </PopoverTrigger>
+      <PopoverContent side={side} className="max-w-sm p-3 z-50 text-sm">
         {children}
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -150,20 +144,16 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
 
-          {/* Title + main tooltip */}
+          {/* Title + main popover */}
           <div className="flex items-center gap-2 mb-6 md:mb-8">
             <h1 className="text-2xl md:text-4xl font-bold gradient-text">Добавить отзыв</h1>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="p-1"
-                  onClick={e => e.currentTarget.focus()}
-                >
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className="p-1">
                   <Icon name="Info" className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground hover:text-primary transition-colors" />
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-sm p-4">
+              </PopoverTrigger>
+              <PopoverContent side="bottom" className="max-w-sm p-4">
                 <div className="space-y-3 text-sm">
                   <div>
                     <p className="font-semibold flex items-center gap-1 mb-1">
@@ -195,8 +185,8 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                     <p className="ml-5 text-muted-foreground">Все отзывы проверяются в течение 24–48 часов. Необходимы скриншоты.</p>
                   </div>
                 </div>
-              </TooltipContent>
-            </Tooltip>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Form card */}
@@ -320,8 +310,8 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                   Изображения *
                   <span className="text-destructive font-normal">(минимум 2)</span>
-                  <InfoTooltip>
-                    <div className="text-sm space-y-2">
+                  <InfoPopover>
+                    <div className="space-y-2">
                       <p className="font-semibold flex items-center gap-1">
                         <Icon name="AlertTriangle" className="w-4 h-4 text-amber-500" />
                         Обязательные изображения
@@ -338,7 +328,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                         <li>Фотография купленного товара</li>
                       </ol>
                     </div>
-                  </InfoTooltip>
+                  </InfoPopover>
                 </label>
 
                 <input
