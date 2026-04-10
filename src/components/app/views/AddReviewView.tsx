@@ -26,6 +26,69 @@ interface AddReviewViewProps {
   initialData?: Partial<AddReviewFormData>;
 }
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function isValidUrl(v: string) {
+  try { new URL(v); return true; } catch { return false; }
+}
+
+function articleError(v: string) {
+  if (!v) return null;
+  return /^\d+$/.test(v) ? null : 'Только цифры';
+}
+
+function linkError(v: string) {
+  if (!v) return null;
+  return isValidUrl(v) ? null : 'Введите корректную ссылку (начиная с https://)';
+}
+
+function sellerError(v: string) {
+  if (!v) return null;
+  return /^[\p{L}0-9\s.,''«»"()/-]+$/u.test(v) ? null : 'Только буквы, цифры и базовые символы';
+}
+
+function textError(v: string) {
+  if (!v) return null;
+  return v.length >= 50 ? null : `Минимум 50 символов (сейчас ${v.length})`;
+}
+
+// ─── FieldError ──────────────────────────────────────────────────────────────
+
+function FieldError({ msg }: { msg: string | null }) {
+  if (!msg) return null;
+  return (
+    <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+      <Icon name="AlertCircle" className="w-3 h-3 flex-shrink-0" />
+      {msg}
+    </p>
+  );
+}
+
+// ─── InfoTooltip ─────────────────────────────────────────────────────────────
+
+function InfoTooltip({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Tooltip open={open} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="p-0.5 align-middle"
+          onClick={() => setOpen(v => !v)}
+          onBlur={() => setOpen(false)}
+        >
+          <Icon name="Info" className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-sm p-3 z-50">
+        {children}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, userId, initialData }: AddReviewViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [marketplace, setMarketplace] = useState(initialData?.marketplace ?? '');
@@ -35,26 +98,34 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
   const [rating, setRating] = useState(initialData?.rating ?? 0);
   const [reviewText, setReviewText] = useState(initialData?.review_text ?? '');
 
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }));
+
   const handleSubmit = () => {
-    onSubmit({
-      marketplace,
-      product_article: productArticle,
-      product_link: productLink,
-      seller,
-      rating,
-      review_text: reviewText,
-    });
+    setTouched({ article: true, link: true, seller: true, text: true });
+    onSubmit({ marketplace, product_article: productArticle, product_link: productLink, seller, rating, review_text: reviewText });
   };
+
+  const aErr = articleError(productArticle);
+  const lErr = linkError(productLink);
+  const sErr = sellerError(seller);
+  const tErr = textError(reviewText);
 
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
+
+          {/* Title + main tooltip */}
           <div className="flex items-center gap-2 mb-6 md:mb-8">
             <h1 className="text-2xl md:text-4xl font-bold gradient-text">Добавить отзыв</h1>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="p-1">
+                <button
+                  type="button"
+                  className="p-1"
+                  onClick={e => e.currentTarget.focus()}
+                >
                   <Icon name="Info" className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground hover:text-primary transition-colors" />
                 </button>
               </TooltipTrigger>
@@ -87,37 +158,22 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                       <Icon name="Clock" className="w-4 h-4 text-primary" />
                       Модерация
                     </p>
-                    <p className="ml-5 text-muted-foreground">Все отзывы проверяются в течение 24-48 часов. Необходимы скриншоты.</p>
+                    <p className="ml-5 text-muted-foreground">Все отзывы проверяются в течение 24–48 часов. Необходимы скриншоты.</p>
                   </div>
                 </div>
               </TooltipContent>
             </Tooltip>
           </div>
 
-          <Card className="mb-4 border-amber-200 bg-amber-50">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex gap-3">
-                <Icon name="AlertTriangle" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-800">
-                  <p className="font-semibold mb-1">Обязательные изображения (минимум 2):</p>
-                  <ol className="list-decimal ml-4 space-y-0.5">
-                    <li>Скриншот из личного кабинета платформы, который подтверждает:
-- факт совершения покупки указанного товара (с видимыми данными о заказе и наименование товара);
-- факт отклонения отзыва продавцом (с отображением текста отзыва и отметки об отклонении);
-- факт отклонения запроса на возврат товара (с отображением причины отклонения).</li>
-                    <li>Фотография купленного товара</li>
-                  </ol>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+          {/* Form card */}
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-lg md:text-xl">Новый отзыв</CardTitle>
-              <CardDescription className="text-sm">Расскажите о своем опыте покупки</CardDescription>
+              <CardDescription className="text-sm">Расскажите о своём опыте покупки</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+
+              {/* Маркетплейс */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Маркетплейс *</label>
                 <Select value={marketplace} onValueChange={setMarketplace}>
@@ -131,21 +187,47 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 </Select>
               </div>
 
+              {/* Артикул */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Артикул товара *</label>
-                <Input value={productArticle} onChange={e => setProductArticle(e.target.value)} placeholder="12345678" className="h-11 md:h-10" />
+                <Input
+                  value={productArticle}
+                  onChange={e => setProductArticle(e.target.value)}
+                  onBlur={() => touch('article')}
+                  placeholder="12345678"
+                  className={`h-11 md:h-10 ${touched.article && aErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  inputMode="numeric"
+                />
+                {touched.article && <FieldError msg={aErr} />}
               </div>
 
+              {/* Ссылка */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Ссылка на товар *</label>
-                <Input value={productLink} onChange={e => setProductLink(e.target.value)} placeholder="https://wildberries.ru/catalog/..." className="h-11 md:h-10" />
+                <Input
+                  value={productLink}
+                  onChange={e => setProductLink(e.target.value)}
+                  onBlur={() => touch('link')}
+                  placeholder="https://wildberries.ru/catalog/..."
+                  className={`h-11 md:h-10 ${touched.link && lErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                />
+                {touched.link && <FieldError msg={lErr} />}
               </div>
 
+              {/* Продавец */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Продавец (необязательно)</label>
-                <Input value={seller} onChange={e => setSeller(e.target.value)} placeholder="ООО 'Название компании'" className="h-11 md:h-10" />
+                <Input
+                  value={seller}
+                  onChange={e => setSeller(e.target.value)}
+                  onBlur={() => touch('seller')}
+                  placeholder="ООО «Название компании»"
+                  className={`h-11 md:h-10 ${touched.seller && sErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                />
+                {touched.seller && <FieldError msg={sErr} />}
               </div>
 
+              {/* Оценка */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Оценка недовольства *</label>
                 <CardDescription className="text-xs mb-3">От 1 (немного недоволен) до 5 (крайне недоволен)</CardDescription>
@@ -153,6 +235,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                   {[1, 2, 3, 4, 5].map((r) => (
                     <Button
                       key={r}
+                      type="button"
                       variant={rating === r ? 'default' : 'outline'}
                       size="sm"
                       className={`h-10 flex-1 min-w-[60px] md:flex-none ${rating === r ? 'bg-destructive border-destructive text-white' : 'hover:bg-destructive hover:text-white hover:border-destructive'}`}
@@ -165,21 +248,53 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 </div>
               </div>
 
+              {/* Текст отзыва */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Ваш отзыв *</label>
                 <Textarea
                   value={reviewText}
                   onChange={e => setReviewText(e.target.value)}
+                  onBlur={() => touch('text')}
                   placeholder="Опишите свою ситуацию, проблему с товаром или продавцом..."
-                  className="min-h-[120px] md:min-h-[150px] text-base"
+                  className={`min-h-[120px] md:min-h-[150px] text-base ${touched.text && tErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
+                <div className="flex items-center justify-between mt-1">
+                  {touched.text && tErr
+                    ? <FieldError msg={tErr} />
+                    : <span />
+                  }
+                  <span className={`text-xs ml-auto ${reviewText.length >= 50 ? 'text-muted-foreground' : 'text-destructive'}`}>
+                    {reviewText.length} / 50
+                  </span>
+                </div>
               </div>
 
+              {/* Изображения */}
               <div>
-                <label className="text-sm font-medium mb-2 block flex items-center gap-1">
+                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                   Изображения *
-                  <span className="text-destructive">(минимум 2)</span>
+                  <span className="text-destructive font-normal">(минимум 2)</span>
+                  <InfoTooltip>
+                    <div className="text-sm space-y-2">
+                      <p className="font-semibold flex items-center gap-1">
+                        <Icon name="AlertTriangle" className="w-4 h-4 text-amber-500" />
+                        Обязательные изображения
+                      </p>
+                      <ol className="list-decimal ml-4 space-y-1 text-muted-foreground">
+                        <li>
+                          Скриншот из личного кабинета платформы, подтверждающий:
+                          <ul className="list-disc ml-4 mt-0.5 space-y-0.5">
+                            <li>факт совершения покупки (данные заказа и наименование товара);</li>
+                            <li>отклонение отзыва продавцом (текст отзыва + отметка об отклонении);</li>
+                            <li>отклонение запроса на возврат (с причиной отклонения).</li>
+                          </ul>
+                        </li>
+                        <li>Фотография купленного товара</li>
+                      </ol>
+                    </div>
+                  </InfoTooltip>
                 </label>
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -229,7 +344,6 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 )}
                 {submitting ? 'Отправка...' : 'Отправить на модерацию'}
               </Button>
-
 
             </CardContent>
           </Card>
