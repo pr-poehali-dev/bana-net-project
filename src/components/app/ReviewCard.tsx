@@ -189,9 +189,10 @@ export function ReviewCard({ review, index, onClick }: ReviewCardProps) {
 interface ReviewDetailProps {
   review: Review;
   onBack: () => void;
+  extraFooter?: React.ReactNode;
 }
 
-export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
+export function ReviewDetail({ review, onBack, extraFooter }: ReviewDetailProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   return (
@@ -270,6 +271,7 @@ export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
                   </div>
                 )}
               </div>
+              {extraFooter}
             </CardContent>
           </Card>
         </div>
