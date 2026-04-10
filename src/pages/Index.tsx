@@ -222,6 +222,7 @@ const Index = () => {
         <SearchView
           searchParam={searchParam}
           setSearchParam={setSearchParam}
+          onOpenReview={openReviewDetail}
         />
       )}
       {currentView === 'add' && (
