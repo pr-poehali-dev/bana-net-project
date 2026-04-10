@@ -42,7 +42,21 @@ function linkError(v: string) {
   return isValidUrl(v) ? null : 'Введите корректную ссылку (начиная с https://)';
 }
 
-function sellerError(v: string) {
+const SELLER_KEYWORDS = [
+  'продавец', 'продавца', 'продавцу', 'продавцом', 'продавце',
+  'магазин', 'магазина', 'магазину', 'магазином', 'магазине',
+  'поставщик', 'поставщика', 'поставщику',
+  'seller', 'shop', 'store',
+  'ооо', 'ип ', 'оао', 'зао', 'пао',
+];
+
+function mentionsSellerInText(text: string): boolean {
+  const lower = text.toLowerCase();
+  return SELLER_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function sellerError(v: string, required: boolean) {
+  if (required && !v.trim()) return 'В тексте отзыва упомянут продавец — укажите название';
   if (!v) return null;
   return /^[\p{L}0-9\s.,''«»"()/-]+$/u.test(v) ? null : 'Только буквы, цифры и базовые символы';
 }
@@ -101,15 +115,35 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }));
 
+  const sellerRequired = mentionsSellerInText(reviewText);
+
   const handleSubmit = () => {
     setTouched({ article: true, link: true, seller: true, text: true });
+    const hasErrors =
+      !marketplace ||
+      !productArticle || !!articleError(productArticle) ||
+      !productLink || !!linkError(productLink) ||
+      !!sellerError(seller, sellerRequired) ||
+      !rating ||
+      !!textError(reviewText) || reviewText.length < 50 ||
+      uploadedFiles.length < 2;
+    if (hasErrors) return;
     onSubmit({ marketplace, product_article: productArticle, product_link: productLink, seller, rating, review_text: reviewText });
   };
 
   const aErr = articleError(productArticle);
   const lErr = linkError(productLink);
-  const sErr = sellerError(seller);
+  const sErr = sellerError(seller, sellerRequired);
   const tErr = textError(reviewText);
+
+  const isFormValid =
+    !!marketplace &&
+    !!productArticle && !aErr &&
+    !!productLink && !lErr &&
+    !sErr &&
+    !!rating &&
+    reviewText.length >= 50 && !tErr &&
+    uploadedFiles.length >= 2;
 
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
@@ -216,13 +250,25 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
 
               {/* Продавец */}
               <div>
-                <label className="text-sm font-medium mb-2 block">Продавец (необязательно)</label>
+                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  Продавец
+                  {sellerRequired
+                    ? <span className="text-destructive font-normal text-xs">(обязательно — упомянут в отзыве)</span>
+                    : <span className="text-muted-foreground font-normal">(необязательно)</span>
+                  }
+                </label>
+                {sellerRequired && !seller && (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5 mb-2">
+                    <Icon name="AlertTriangle" className="w-3.5 h-3.5 flex-shrink-0" />
+                    Вы упоминаете продавца в тексте — пожалуйста, укажите его название
+                  </div>
+                )}
                 <Input
                   value={seller}
                   onChange={e => setSeller(e.target.value)}
                   onBlur={() => touch('seller')}
                   placeholder="ООО «Название компании»"
-                  className={`h-11 md:h-10 ${touched.seller && sErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  className={`h-11 md:h-10 ${touched.seller && sErr ? 'border-destructive focus-visible:ring-destructive' : sellerRequired && !seller ? 'border-amber-400' : ''}`}
                 />
                 {touched.seller && <FieldError msg={sErr} />}
               </div>
@@ -335,7 +381,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 className="w-full gradient-bg h-12 md:h-11 text-base md:text-sm"
                 size="lg"
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={submitting || !isFormValid}
               >
                 {submitting ? (
                   <Icon name="Loader" className="w-4 h-4 mr-2 animate-spin" />
