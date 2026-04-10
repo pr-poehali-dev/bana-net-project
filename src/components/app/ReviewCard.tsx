@@ -1,9 +1,85 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
 import { formatDate } from '@/types/app';
+
+// ─── Lightbox ────────────────────────────────────────────────────────────────
+
+interface LightboxProps {
+  images: string[];
+  startIndex: number;
+  onClose: () => void;
+}
+
+function Lightbox({ images, startIndex, onClose }: LightboxProps) {
+  const [current, setCurrent] = useState(startIndex);
+
+  const prev = useCallback(() => setCurrent(i => (i - 1 + images.length) % images.length), [images.length]);
+  const next = useCallback(() => setCurrent(i => (i + 1) % images.length), [images.length]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowRight') next();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose, prev, next]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      onClick={onClose}
+    >
+      <button
+        className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+        onClick={onClose}
+      >
+        <Icon name="X" size={32} />
+      </button>
+
+      {images.length > 1 && (
+        <>
+          <button
+            className="absolute left-3 md:left-6 text-white/70 hover:text-white transition-colors"
+            onClick={e => { e.stopPropagation(); prev(); }}
+          >
+            <Icon name="ChevronLeft" size={40} />
+          </button>
+          <button
+            className="absolute right-3 md:right-6 text-white/70 hover:text-white transition-colors"
+            onClick={e => { e.stopPropagation(); next(); }}
+          >
+            <Icon name="ChevronRight" size={40} />
+          </button>
+        </>
+      )}
+
+      <img
+        src={images[current]}
+        alt={`Фото ${current + 1}`}
+        className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      />
+
+      {images.length > 1 && (
+        <div className="absolute bottom-4 flex gap-2">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={e => { e.stopPropagation(); setCurrent(i); }}
+              className={`w-2 h-2 rounded-full transition-colors ${i === current ? 'bg-white' : 'bg-white/40'}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export interface Review {
   id: number;
@@ -30,64 +106,83 @@ interface ReviewCardProps {
 }
 
 export function ReviewCard({ review, index, onClick }: ReviewCardProps) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const openImage = (i: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLightboxIndex(i);
+  };
+
   return (
-    <Card
-      className="animate-fade-in hover:shadow-lg transition-shadow cursor-pointer"
-      style={{ animationDelay: `${index * 0.1}s` }}
-      onClick={() => onClick(review)}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
-            <Avatar className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
-              <AvatarFallback className="gradient-bg text-white text-sm">{review.author_name[0]}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-base md:text-lg truncate">{review.author_name}</CardTitle>
-              <CardDescription className="flex items-center gap-1 md:gap-2 flex-wrap">
-                <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'} className="text-xs">
-                  {review.marketplace}
-                </Badge>
-                <span className="text-xs">{formatDate(review.created_at)}</span>
-              </CardDescription>
+    <>
+      {lightboxIndex !== null && (
+        <Lightbox images={review.images} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+      )}
+      <Card
+        className="animate-fade-in hover:shadow-lg transition-shadow cursor-pointer"
+        style={{ animationDelay: `${index * 0.1}s` }}
+        onClick={() => onClick(review)}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+              <Avatar className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
+                <AvatarFallback className="gradient-bg text-white text-sm">{review.author_name[0]}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-base md:text-lg truncate">{review.author_name}</CardTitle>
+                <CardDescription className="flex items-center gap-1 md:gap-2 flex-wrap">
+                  <Badge variant={review.marketplace === 'Wildberries' ? 'default' : 'secondary'} className="text-xs">
+                    {review.marketplace}
+                  </Badge>
+                  <span className="text-xs">{formatDate(review.created_at)}</span>
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Icon name="ThumbsDown" className="w-4 h-4 md:w-5 md:h-5 text-destructive fill-destructive" />
+              <span className="text-sm md:text-base font-semibold text-destructive">{review.rating}/5</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Icon name="ThumbsDown" className="w-4 h-4 md:w-5 md:h-5 text-destructive fill-destructive" />
-            <span className="text-sm md:text-base font-semibold text-destructive">{review.rating}/5</span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <p className="text-sm md:text-base text-foreground mb-3 md:mb-4 line-clamp-2">{review.review_text}</p>
-        {review.images && review.images.length > 0 && (
-          <div className="flex gap-2 mb-3 overflow-x-auto">
-            {review.images.slice(0, 3).map((img, i) => (
-              <img key={i} src={img} alt="" className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover flex-shrink-0" />
-            ))}
-            {review.images.length > 3 && (
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                <span className="text-sm text-muted-foreground">+{review.images.length - 3}</span>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-sm md:text-base text-foreground mb-3 md:mb-4 line-clamp-2">{review.review_text}</p>
+          {review.images && review.images.length > 0 && (
+            <div className="flex gap-2 mb-3 overflow-x-auto">
+              {review.images.slice(0, 3).map((img, i) => (
+                <img
+                  key={i} src={img} alt=""
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover flex-shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity"
+                  onClick={e => openImage(i, e)}
+                />
+              ))}
+              {review.images.length > 3 && (
+                <div
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 cursor-zoom-in hover:bg-muted/70 transition-colors"
+                  onClick={e => openImage(3, e)}
+                >
+                  <span className="text-sm text-muted-foreground">+{review.images.length - 3}</span>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs md:text-sm text-muted-foreground">
+            {review.product_article && (
+              <div className="flex items-center gap-1">
+                <Icon name="Package" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                <span className="truncate">Артикул: {review.product_article}</span>
+              </div>
+            )}
+            {review.seller && (
+              <div className="flex items-center gap-1">
+                <Icon name="Store" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                <span className="truncate">Продавец: {review.seller}</span>
               </div>
             )}
           </div>
-        )}
-        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs md:text-sm text-muted-foreground">
-          {review.product_article && (
-            <div className="flex items-center gap-1">
-              <Icon name="Package" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-              <span className="truncate">Артикул: {review.product_article}</span>
-            </div>
-          )}
-          {review.seller && (
-            <div className="flex items-center gap-1">
-              <Icon name="Store" className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-              <span className="truncate">Продавец: {review.seller}</span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
@@ -97,7 +192,13 @@ interface ReviewDetailProps {
 }
 
 export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   return (
+    <>
+      {lightboxIndex !== null && (
+        <Lightbox images={review.images} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+      )}
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto">
@@ -137,7 +238,11 @@ export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
                   <h3 className="font-semibold mb-3">Прикреплённые изображения</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {review.images.map((img, i) => (
-                      <img key={i} src={img} alt={`Фото ${i + 1}`} className="w-full aspect-square rounded-lg object-cover" />
+                      <img
+                        key={i} src={img} alt={`Фото ${i + 1}`}
+                        className="w-full aspect-square rounded-lg object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
+                        onClick={() => setLightboxIndex(i)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -170,5 +275,6 @@ export function ReviewDetail({ review, onBack }: ReviewDetailProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }
