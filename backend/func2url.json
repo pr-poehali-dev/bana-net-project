@@ -1,4 +1,6 @@
 {
+  "tickets": "https://functions.poehali.dev/b6ddeedd-aa8e-460b-9ce7-aa6a86bd6a9a",
+  "tickets-admin": "https://functions.poehali.dev/4133d939-4282-4dbf-acf3-a24bd7f87c24",
   "presigned-url": "https://functions.poehali.dev/377e669d-8ca7-4a4a-8106-494c56843766",
   "reviews-admin": "https://functions.poehali.dev/097fa3a2-45a1-40e6-a330-2d6f71d34c2a",
   "reviews-public": "https://functions.poehali.dev/21cfc2a0-5671-41c8-b3eb-623cd4a97b50",

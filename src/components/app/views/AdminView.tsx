@@ -9,10 +9,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { type Review } from '@/components/app/ReviewCard';
-import { formatDate, apiFetch, ADMIN_URL } from '@/types/app';
+import { formatDate, apiFetch, ADMIN_URL, TICKETS_ADMIN_URL } from '@/types/app';
 
 interface AdminStats { pending: number; approved: number; rejected: number; draft: number; total: number; }
 interface AdminReview extends Review { author_name: string; author_avatar: string | null; }
+
+interface TicketMsg { id: number; body: string; is_admin: boolean; created_at: string; author_name: string; }
+interface AdminTicket { id: number; subject: string; status: string; created_at: string; updated_at: string; user_name?: string; user_telegram_id?: string; user_avatar?: string | null; message_count?: number; messages?: TicketMsg[]; }
+interface TicketCounts { open: number; answered: number; closed: number; }
 
 interface AdminViewProps {
   adminEmail: string;
@@ -44,6 +48,16 @@ export function AdminView({
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [moderating, setModerating] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, string>>({});
+
+  // Тикеты поддержки
+  const [tickets, setTickets] = useState<AdminTicket[]>([]);
+  const [ticketCounts, setTicketCounts] = useState<TicketCounts>({ open: 0, answered: 0, closed: 0 });
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<'open' | 'answered' | 'closed' | ''>('open');
+  const [selectedTicket, setSelectedTicket] = useState<AdminTicket | null>(null);
+  const [ticketDetailLoading, setTicketDetailLoading] = useState(false);
+  const [adminReply, setAdminReply] = useState('');
+  const [replySending, setReplySending] = useState(false);
 
   const loadStats = useCallback(async () => {
     const res = await apiFetch(`${ADMIN_URL}?action=stats`);
@@ -78,6 +92,58 @@ export function AdminView({
     });
     setModerating(null);
     await Promise.all([loadStats(), loadReviews(statusFilter)]);
+  };
+
+  const loadTickets = useCallback(async (status: string) => {
+    setTicketsLoading(true);
+    const q = status ? `?status=${status}` : '';
+    const res = await apiFetch(`${TICKETS_ADMIN_URL}${q}`);
+    if (res.ok) {
+      const data = await res.json();
+      setTickets(data.tickets ?? []);
+      setTicketCounts(data.counts ?? { open: 0, answered: 0, closed: 0 });
+    }
+    setTicketsLoading(false);
+  }, []);
+
+  const loadTicketDetail = useCallback(async (id: number) => {
+    setTicketDetailLoading(true);
+    const res = await apiFetch(`${TICKETS_ADMIN_URL}?id=${id}`);
+    if (res.ok) {
+      const data = await res.json();
+      setSelectedTicket(data);
+    }
+    setTicketDetailLoading(false);
+  }, []);
+
+  const handleAdminReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminReply.trim() || !selectedTicket) return;
+    setReplySending(true);
+    const res = await apiFetch(`${TICKETS_ADMIN_URL}?action=reply`, {
+      method: 'POST',
+      body: JSON.stringify({ ticket_id: selectedTicket.id, message: adminReply.trim() }),
+    });
+    if (res.ok) {
+      setAdminReply('');
+      await loadTicketDetail(selectedTicket.id);
+      await loadTickets(ticketStatusFilter);
+    }
+    setReplySending(false);
+  };
+
+  const handleAdminCloseTicket = async () => {
+    if (!selectedTicket) return;
+    setReplySending(true);
+    const res = await apiFetch(`${TICKETS_ADMIN_URL}?action=close`, {
+      method: 'PUT',
+      body: JSON.stringify({ ticket_id: selectedTicket.id }),
+    });
+    if (res.ok) {
+      await loadTicketDetail(selectedTicket.id);
+      await loadTickets(ticketStatusFilter);
+    }
+    setReplySending(false);
   };
 
   const starRating = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
@@ -139,10 +205,16 @@ export function AdminView({
             </Card>
           </div>
 
-          <Tabs defaultValue="reviews" className="space-y-6">
+          <Tabs defaultValue="reviews" className="space-y-6" onValueChange={(v) => { if (v === 'tickets') { setSelectedTicket(null); loadTickets(ticketStatusFilter); } }}>
             <TabsList>
               <TabsTrigger value="reviews">Модерация</TabsTrigger>
-              <TabsTrigger value="contacts">Контакты поддержки</TabsTrigger>
+              <TabsTrigger value="tickets" className="relative">
+                Обращения
+                {ticketCounts.open > 0 && (
+                  <Badge variant="destructive" className="ml-2 text-xs px-1.5 py-0">{ticketCounts.open}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="contacts">Контакты</TabsTrigger>
             </TabsList>
 
             <TabsContent value="reviews" className="space-y-4">
@@ -256,6 +328,110 @@ export function AdminView({
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Вкладка Обращения */}
+            <TabsContent value="tickets" className="space-y-4">
+              {selectedTicket ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Button variant="ghost" size="icon" onClick={() => setSelectedTicket(null)}>
+                      <Icon name="ArrowLeft" className="w-5 h-5" />
+                    </Button>
+                    <div>
+                      <p className="font-semibold">{selectedTicket.subject}</p>
+                      <p className="text-xs text-muted-foreground">{selectedTicket.user_name} · #{selectedTicket.id}</p>
+                    </div>
+                    <Badge className="ml-auto" variant={selectedTicket.status === 'open' ? 'default' : selectedTicket.status === 'answered' ? 'secondary' : 'outline'}>
+                      {selectedTicket.status === 'open' ? 'Открыто' : selectedTicket.status === 'answered' ? 'Отвечено' : 'Закрыто'}
+                    </Badge>
+                  </div>
+
+                  {ticketDetailLoading ? (
+                    <div className="flex justify-center py-8"><Icon name="Loader2" className="w-8 h-8 animate-spin text-muted-foreground" /></div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(selectedTicket.messages || []).map(m => (
+                        <div key={m.id} className={`flex ${m.is_admin ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm ${m.is_admin ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                            <p className={`text-xs font-medium mb-1 ${m.is_admin ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                              {m.is_admin ? 'Поддержка (вы)' : m.author_name}
+                            </p>
+                            <p className="whitespace-pre-wrap">{m.body}</p>
+                            <p className={`text-xs mt-1.5 ${m.is_admin ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{formatDate(m.created_at)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedTicket.status !== 'closed' ? (
+                    <Card>
+                      <CardContent className="pt-4">
+                        <form onSubmit={handleAdminReply} className="space-y-3">
+                          <Textarea
+                            placeholder="Введите ответ пользователю..."
+                            value={adminReply}
+                            onChange={e => setAdminReply(e.target.value)}
+                            disabled={replySending}
+                            rows={4}
+                            required
+                          />
+                          <div className="flex gap-3">
+                            <Button type="submit" disabled={replySending || !adminReply.trim()}>
+                              {replySending && <Icon name="Loader2" className="w-4 h-4 mr-2 animate-spin" />}
+                              Ответить
+                            </Button>
+                            <Button type="button" variant="outline" onClick={handleAdminCloseTicket} disabled={replySending}>
+                              Закрыть обращение
+                            </Button>
+                          </div>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <p className="text-center py-4 text-muted-foreground text-sm">Обращение закрыто</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2 flex-wrap">
+                    {(['open', 'answered', 'closed'] as const).map(s => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant={ticketStatusFilter === s ? 'default' : 'outline'}
+                        onClick={() => { setTicketStatusFilter(s); loadTickets(s); }}
+                      >
+                        {s === 'open' ? 'Открытые' : s === 'answered' ? 'Отвеченные' : 'Закрытые'}
+                        <Badge variant="secondary" className="ml-2 text-xs">{ticketCounts[s]}</Badge>
+                      </Button>
+                    ))}
+                  </div>
+
+                  <Card>
+                    <CardContent className="pt-4">
+                      {ticketsLoading ? (
+                        <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
+                      ) : tickets.length === 0 ? (
+                        <p className="text-muted-foreground text-sm py-8 text-center">Обращений нет</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {tickets.map(t => (
+                            <div key={t.id} className="flex items-center justify-between border rounded-lg px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => { loadTicketDetail(t.id); }}>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{t.subject}</p>
+                                <p className="text-xs text-muted-foreground">{t.user_name} · {t.message_count} сообщ. · {formatDate(t.updated_at)}</p>
+                              </div>
+                              <Icon name="ChevronRight" className="w-4 h-4 text-muted-foreground ml-3 flex-shrink-0" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="contacts" className="space-y-4">
