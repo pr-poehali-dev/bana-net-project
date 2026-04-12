@@ -263,13 +263,7 @@ const Index = () => {
         />
       )}
       {currentView === 'support' && (
-        <SupportView
-          adminEmail={adminEmail}
-          adminTelegram={adminTelegram}
-          emailCopied={emailCopied}
-          onCopyEmail={copyEmail}
-          onTelegramClick={handleTelegramClick}
-        />
+        <SupportView />
       )}
       {currentView === 'review-detail' && selectedReview && (
         <ReviewDetail
