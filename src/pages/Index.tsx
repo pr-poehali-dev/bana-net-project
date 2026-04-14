@@ -27,11 +27,7 @@ const Index = () => {
   const [submitting, setSubmitting] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  const [adminEmail, setAdminEmail] = useState('support@bananet.ru');
-  const [adminTelegram, setAdminTelegram] = useState('https://t.me/bananet_support');
-  const [editingContacts, setEditingContacts] = useState(false);
-  const [tempEmail, setTempEmail] = useState('');
-  const [tempTelegram, setTempTelegram] = useState('');
+
   const [resubmitData, setResubmitData] = useState<Review | null>(null);
 
   const userId = user?.id ?? null;
@@ -173,12 +169,7 @@ const Index = () => {
     }
   };
 
-  const handleSaveContacts = () => {
-    setAdminEmail(tempEmail);
-    setAdminTelegram(tempTelegram);
-    setEditingContacts(false);
-    toast({ title: "Контакты обновлены" });
-  };
+
 
   if (authLoading) {
     return <TelegramGate loading={true} />;
@@ -250,17 +241,7 @@ const Index = () => {
         />
       )}
       {currentView === 'admin' && isAdmin && (
-        <AdminView
-          adminEmail={adminEmail}
-          adminTelegram={adminTelegram}
-          editingContacts={editingContacts}
-          setEditingContacts={setEditingContacts}
-          tempEmail={tempEmail}
-          setTempEmail={setTempEmail}
-          tempTelegram={tempTelegram}
-          setTempTelegram={setTempTelegram}
-          onSaveContacts={handleSaveContacts}
-        />
+        <AdminView />
       )}
       {currentView === 'support' && (
         <SupportView />

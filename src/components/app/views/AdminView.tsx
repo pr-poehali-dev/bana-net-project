@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,29 +17,7 @@ interface TicketMsg { id: number; body: string; is_admin: boolean; created_at: s
 interface AdminTicket { id: number; subject: string; status: string; created_at: string; updated_at: string; user_name?: string; user_telegram_id?: string; user_avatar?: string | null; message_count?: number; messages?: TicketMsg[]; }
 interface TicketCounts { open: number; answered: number; closed: number; }
 
-interface AdminViewProps {
-  adminEmail: string;
-  adminTelegram: string;
-  editingContacts: boolean;
-  setEditingContacts: (v: boolean) => void;
-  tempEmail: string;
-  setTempEmail: (v: string) => void;
-  tempTelegram: string;
-  setTempTelegram: (v: string) => void;
-  onSaveContacts: () => void;
-}
-
-export function AdminView({
-  adminEmail,
-  adminTelegram,
-  editingContacts,
-  setEditingContacts,
-  tempEmail,
-  setTempEmail,
-  tempTelegram,
-  setTempTelegram,
-  onSaveContacts,
-}: AdminViewProps) {
+export function AdminView() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,7 +191,7 @@ export function AdminView({
                   <Badge variant="destructive" className="ml-2 text-xs px-1.5 py-0">{ticketCounts.open}</Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="contacts">Контакты</TabsTrigger>
+
             </TabsList>
 
             <TabsContent value="reviews" className="space-y-4">
@@ -434,46 +411,7 @@ export function AdminView({
               )}
             </TabsContent>
 
-            <TabsContent value="contacts" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Контактные данные поддержки</CardTitle>
-                  <CardDescription>Эти данные отображаются на вкладке «Поддержка»</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Email поддержки</label>
-                    {editingContacts ? (
-                      <Input value={tempEmail} onChange={(e) => setTempEmail(e.target.value)} placeholder="support@bananet.ru" />
-                    ) : (
-                      <p className="text-sm p-2 border rounded">{adminEmail}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Ссылка на Telegram</label>
-                    {editingContacts ? (
-                      <Input value={tempTelegram} onChange={(e) => setTempTelegram(e.target.value)} placeholder="https://t.me/..." />
-                    ) : (
-                      <p className="text-sm p-2 border rounded">{adminTelegram}</p>
-                    )}
-                  </div>
-                  {editingContacts ? (
-                    <div className="flex gap-2">
-                      <Button className="gradient-bg" onClick={onSaveContacts}>
-                        <Icon name="Check" className="w-4 h-4 mr-2" />
-                        Сохранить
-                      </Button>
-                      <Button variant="outline" onClick={() => setEditingContacts(false)}>Отмена</Button>
-                    </div>
-                  ) : (
-                    <Button variant="outline" onClick={() => { setTempEmail(adminEmail); setTempTelegram(adminTelegram); setEditingContacts(true); }}>
-                      <Icon name="Pencil" className="w-4 h-4 mr-2" />
-                      Редактировать
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+
           </Tabs>
         </div>
       </div>
