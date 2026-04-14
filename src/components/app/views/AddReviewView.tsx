@@ -42,6 +42,49 @@ function linkError(v: string) {
   return isValidUrl(v) ? null : 'Введите корректную ссылку (начиная с https://)';
 }
 
+// ─── Автоопределение маркетплейса и автозаполнение ───────────────────────────
+
+const MARKETPLACES: { name: string; domains: string[]; articleFromUrl: (url: URL) => string | null; buildUrl: (article: string) => string }[] = [
+  {
+    name: 'Wildberries',
+    domains: ['wildberries.ru', 'www.wildberries.ru'],
+    articleFromUrl: (url) => {
+      const m = url.pathname.match(/\/catalog\/(\d+)/);
+      return m ? m[1] : null;
+    },
+    buildUrl: (article) => `https://www.wildberries.ru/catalog/${article}/detail.aspx`,
+  },
+  {
+    name: 'OZON',
+    domains: ['ozon.ru', 'www.ozon.ru'],
+    articleFromUrl: (url) => {
+      const m = url.pathname.match(/\/product\/[^/]+-(\d+)\/?$/);
+      if (m) return m[1];
+      const m2 = url.pathname.match(/\/(\d+)\/?$/);
+      return m2 ? m2[1] : null;
+    },
+    buildUrl: (article) => `https://www.ozon.ru/product/${article}/`,
+  },
+];
+
+function detectFromUrl(rawUrl: string): { marketplace: string; article: string } | null {
+  try {
+    const url = new URL(rawUrl);
+    for (const mp of MARKETPLACES) {
+      if (mp.domains.includes(url.hostname)) {
+        const article = mp.articleFromUrl(url);
+        return { marketplace: mp.name, article: article ?? '' };
+      }
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function buildUrlFromArticle(marketplace: string, article: string): string | null {
+  const mp = MARKETPLACES.find(m => m.name === marketplace);
+  return mp && /^\d+$/.test(article) ? mp.buildUrl(article) : null;
+}
+
 const SELLER_KEYWORDS = [
   'продавец', 'продавца', 'продавцу', 'продавцом', 'продавце',
   'магазин', 'магазина', 'магазину', 'магазином', 'магазине',
@@ -108,6 +151,40 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }));
+  const [autofilled, setAutofilled] = useState<Record<string, boolean>>({});
+
+  function handleArticleBlur() {
+    touch('article');
+    if (!productArticle || !!articleError(productArticle)) return;
+    if (marketplace) {
+      const url = buildUrlFromArticle(marketplace, productArticle);
+      if (url && !productLink) {
+        setProductLink(url);
+        setAutofilled(a => ({ ...a, link: true }));
+      }
+    }
+  }
+
+  function handleLinkChange(value: string) {
+    setProductLink(value);
+    setAutofilled(a => ({ ...a, link: false }));
+    const detected = detectFromUrl(value);
+    if (detected) {
+      if (!marketplace || autofilled.marketplace) {
+        setMarketplace(detected.marketplace);
+        setAutofilled(a => ({ ...a, marketplace: true }));
+      }
+      if (detected.article && (!productArticle || autofilled.article)) {
+        setProductArticle(detected.article);
+        setAutofilled(a => ({ ...a, article: true }));
+      }
+    }
+  }
+
+  function handleArticleChange(value: string) {
+    setProductArticle(value);
+    setAutofilled(a => ({ ...a, article: false }));
+  }
 
   const sellerRequired = mentionsSellerInText(reviewText);
 
@@ -199,8 +276,15 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
 
               {/* Маркетплейс */}
               <div>
-                <label className="text-sm font-medium mb-2 block">Маркетплейс *</label>
-                <Select value={marketplace} onValueChange={setMarketplace}>
+                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  Маркетплейс *
+                  {autofilled.marketplace && (
+                    <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
+                      <Icon name="Sparkles" className="w-3 h-3" /> Определён автоматически
+                    </span>
+                  )}
+                </label>
+                <Select value={marketplace} onValueChange={v => { setMarketplace(v); setAutofilled(a => ({ ...a, marketplace: false })); }}>
                   <SelectTrigger className="h-11 md:h-10">
                     <SelectValue placeholder="Выберите маркетплейс" />
                   </SelectTrigger>
@@ -213,13 +297,20 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
 
               {/* Артикул */}
               <div>
-                <label className="text-sm font-medium mb-2 block">Артикул товара *</label>
+                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  Артикул товара *
+                  {autofilled.article && (
+                    <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
+                      <Icon name="Sparkles" className="w-3 h-3" /> Заполнен автоматически
+                    </span>
+                  )}
+                </label>
                 <Input
                   value={productArticle}
-                  onChange={e => setProductArticle(e.target.value)}
-                  onBlur={() => touch('article')}
+                  onChange={e => handleArticleChange(e.target.value)}
+                  onBlur={handleArticleBlur}
                   placeholder="12345678"
-                  className={`h-11 md:h-10 ${touched.article && aErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  className={`h-11 md:h-10 ${touched.article && aErr ? 'border-destructive focus-visible:ring-destructive' : autofilled.article ? 'border-green-400' : ''}`}
                   inputMode="numeric"
                 />
                 {touched.article && <FieldError msg={aErr} />}
@@ -227,13 +318,20 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
 
               {/* Ссылка */}
               <div>
-                <label className="text-sm font-medium mb-2 block">Ссылка на товар *</label>
+                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  Ссылка на товар *
+                  {autofilled.link && (
+                    <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
+                      <Icon name="Sparkles" className="w-3 h-3" /> Заполнена автоматически
+                    </span>
+                  )}
+                </label>
                 <Input
                   value={productLink}
-                  onChange={e => setProductLink(e.target.value)}
+                  onChange={e => handleLinkChange(e.target.value)}
                   onBlur={() => touch('link')}
-                  placeholder="https://wildberries.ru/catalog/..."
-                  className={`h-11 md:h-10 ${touched.link && lErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  placeholder="https://wildberries.ru/catalog/... или https://ozon.ru/product/..."
+                  className={`h-11 md:h-10 ${touched.link && lErr ? 'border-destructive focus-visible:ring-destructive' : autofilled.link ? 'border-green-400' : ''}`}
                 />
                 {touched.link && <FieldError msg={lErr} />}
               </div>
