@@ -21,7 +21,7 @@ export default function AppNavigation({ currentView, mobileMenuOpen, setMobileMe
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('home')}>
             <img src={LOGO_URL} alt="BANaNET" className="w-10 h-10 rounded-xl object-contain" />
-            <h1 className="text-xl md:text-2xl font-bold gradient-text">BANaNET</h1>
+            <h1 className="text-xl md:text-2xl font-bold gradient-text">BANa.NET</h1>
           </div>
 
           <div className="hidden md:flex items-center gap-6">
