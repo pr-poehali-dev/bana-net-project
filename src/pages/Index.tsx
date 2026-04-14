@@ -259,7 +259,7 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center text-muted-foreground">
           <div className="flex items-center justify-center gap-2 mb-2">
             <img src={LOGO_URL} alt="BANaNET" className="w-8 h-8 object-contain" />
-            <span className="font-bold gradient-text text-lg">BANaNET</span>
+            <span className="font-bold gradient-text text-lg">BANa.NET</span>
           </div>
           <p className="text-sm">© 2025 Платформа честных отзывов</p>
         </div>
