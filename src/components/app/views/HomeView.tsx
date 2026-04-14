@@ -33,10 +33,10 @@ export function HomeView({ reviews, loading, stats, onNavigate, onOpenReview }: 
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-block mb-4 md:mb-6 animate-scale-in">
-              <img src={LOGO_URL} alt="BANaNET" className="w-20 h-20 md:w-28 md:h-28 mx-auto mb-4 drop-shadow-lg" />
+            <div className="flex justify-center mb-4 md:mb-6 animate-scale-in">
+              <img src={LOGO_URL} alt="BANaNET" className="w-20 h-20 md:w-28 md:h-28 drop-shadow-lg" />
             </div>
-            <div className="inline-block mb-4 md:mb-6">
+            <div className="flex justify-center mb-4 md:mb-6">
               <Badge className="bg-white/20 text-white border-white/30 text-sm md:text-lg px-4 md:px-6 py-1.5 md:py-2">Платформа для честных отзывов</Badge>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 md:mb-6 animate-slide-up px-4">Твой отзыв важен!</h1>
