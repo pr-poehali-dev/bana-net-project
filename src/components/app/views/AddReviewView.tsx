@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Icon from '@/components/ui/icon';
+import { PRODUCT_LOOKUP_URL } from '@/types/app';
 
 export interface AddReviewFormData {
   marketplace: string;
@@ -42,48 +43,6 @@ function linkError(v: string) {
   return isValidUrl(v) ? null : 'Введите корректную ссылку (начиная с https://)';
 }
 
-// ─── Автоопределение маркетплейса и автозаполнение ───────────────────────────
-
-const MARKETPLACES: { name: string; domains: string[]; articleFromUrl: (url: URL) => string | null; buildUrl: (article: string) => string }[] = [
-  {
-    name: 'Wildberries',
-    domains: ['wildberries.ru', 'www.wildberries.ru'],
-    articleFromUrl: (url) => {
-      const m = url.pathname.match(/\/catalog\/(\d+)/);
-      return m ? m[1] : null;
-    },
-    buildUrl: (article) => `https://www.wildberries.ru/catalog/${article}/detail.aspx`,
-  },
-  {
-    name: 'OZON',
-    domains: ['ozon.ru', 'www.ozon.ru'],
-    articleFromUrl: (url) => {
-      const m = url.pathname.match(/\/product\/[^/]+-(\d+)\/?$/);
-      if (m) return m[1];
-      const m2 = url.pathname.match(/\/(\d+)\/?$/);
-      return m2 ? m2[1] : null;
-    },
-    buildUrl: (article) => `https://www.ozon.ru/product/${article}/`,
-  },
-];
-
-function detectFromUrl(rawUrl: string): { marketplace: string; article: string } | null {
-  try {
-    const url = new URL(rawUrl);
-    for (const mp of MARKETPLACES) {
-      if (mp.domains.includes(url.hostname)) {
-        const article = mp.articleFromUrl(url);
-        return { marketplace: mp.name, article: article ?? '' };
-      }
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-
-function buildUrlFromArticle(marketplace: string, article: string): string | null {
-  const mp = MARKETPLACES.find(m => m.name === marketplace);
-  return mp && /^\d+$/.test(article) ? mp.buildUrl(article) : null;
-}
 
 const SELLER_KEYWORDS = [
   'продавец', 'продавца', 'продавцу', 'продавцом', 'продавце',
@@ -152,38 +111,82 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }));
   const [autofilled, setAutofilled] = useState<Record<string, boolean>>({});
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
-  function handleArticleBlur() {
-    touch('article');
-    if (!productArticle || !!articleError(productArticle)) return;
-    if (marketplace) {
-      const url = buildUrlFromArticle(marketplace, productArticle);
-      if (url && !productLink) {
-        setProductLink(url);
-        setAutofilled(a => ({ ...a, link: true }));
-      }
+  const applyLookupResult = useCallback((data: { ok: boolean; marketplace?: string; article?: string; url?: string; error?: string }) => {
+    if (!data.ok) {
+      setLookupError(data.error ?? 'Не удалось определить товар');
+      return;
+    }
+    setLookupError(null);
+    if (data.marketplace) { setMarketplace(data.marketplace); setAutofilled(a => ({ ...a, marketplace: true })); }
+    if (data.article) { setProductArticle(data.article); setAutofilled(a => ({ ...a, article: true })); }
+    if (data.url) { setProductLink(data.url); setAutofilled(a => ({ ...a, link: true })); }
+  }, []);
+
+  async function lookupByArticle(art: string, mp: string) {
+    if (!art || !!articleError(art)) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      const res = await fetch(PRODUCT_LOOKUP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article: art, marketplace: mp }),
+      });
+      const data = await res.json();
+      applyLookupResult(data);
+    } catch {
+      setLookupError('Ошибка соединения с сервером');
+    } finally {
+      setLookupLoading(false);
     }
   }
 
-  function handleLinkChange(value: string) {
-    setProductLink(value);
-    setAutofilled(a => ({ ...a, link: false }));
-    const detected = detectFromUrl(value);
-    if (detected) {
-      if (!marketplace || autofilled.marketplace) {
-        setMarketplace(detected.marketplace);
-        setAutofilled(a => ({ ...a, marketplace: true }));
-      }
-      if (detected.article && (!productArticle || autofilled.article)) {
-        setProductArticle(detected.article);
-        setAutofilled(a => ({ ...a, article: true }));
-      }
+  async function lookupByUrl(url: string) {
+    if (!url) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      const res = await fetch(PRODUCT_LOOKUP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      applyLookupResult(data);
+    } catch {
+      setLookupError('Ошибка соединения с сервером');
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  function handleArticleBlur() {
+    touch('article');
+    if (productArticle && !articleError(productArticle)) {
+      lookupByArticle(productArticle, marketplace);
+    }
+  }
+
+  function handleLinkBlur() {
+    touch('link');
+    if (productLink) {
+      lookupByUrl(productLink);
     }
   }
 
   function handleArticleChange(value: string) {
     setProductArticle(value);
     setAutofilled(a => ({ ...a, article: false }));
+    setLookupError(null);
+  }
+
+  function handleLinkChange(value: string) {
+    setProductLink(value);
+    setAutofilled(a => ({ ...a, link: false }));
+    setLookupError(null);
   }
 
   const sellerRequired = mentionsSellerInText(reviewText);
@@ -299,7 +302,8 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
               <div>
                 <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                   Артикул товара *
-                  {autofilled.article && (
+                  {lookupLoading && <Icon name="Loader2" className="w-3 h-3 animate-spin text-muted-foreground" />}
+                  {!lookupLoading && autofilled.article && (
                     <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
                       <Icon name="Sparkles" className="w-3 h-3" /> Заполнен автоматически
                     </span>
@@ -312,6 +316,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                   placeholder="12345678"
                   className={`h-11 md:h-10 ${touched.article && aErr ? 'border-destructive focus-visible:ring-destructive' : autofilled.article ? 'border-green-400' : ''}`}
                   inputMode="numeric"
+                  disabled={lookupLoading}
                 />
                 {touched.article && <FieldError msg={aErr} />}
               </div>
@@ -320,7 +325,8 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
               <div>
                 <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                   Ссылка на товар *
-                  {autofilled.link && (
+                  {lookupLoading && <Icon name="Loader2" className="w-3 h-3 animate-spin text-muted-foreground" />}
+                  {!lookupLoading && autofilled.link && (
                     <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
                       <Icon name="Sparkles" className="w-3 h-3" /> Заполнена автоматически
                     </span>
@@ -329,12 +335,21 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 <Input
                   value={productLink}
                   onChange={e => handleLinkChange(e.target.value)}
-                  onBlur={() => touch('link')}
+                  onBlur={handleLinkBlur}
                   placeholder="https://wildberries.ru/catalog/... или https://ozon.ru/product/..."
                   className={`h-11 md:h-10 ${touched.link && lErr ? 'border-destructive focus-visible:ring-destructive' : autofilled.link ? 'border-green-400' : ''}`}
+                  disabled={lookupLoading}
                 />
                 {touched.link && <FieldError msg={lErr} />}
               </div>
+
+              {/* Ошибка lookup */}
+              {lookupError && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  <Icon name="AlertTriangle" className="w-3.5 h-3.5 flex-shrink-0" />
+                  {lookupError}
+                </div>
+              )}
 
               {/* Продавец */}
               <div>

@@ -1,0 +1,40 @@
+{
+  "tests": [
+    {
+      "name": "Lookup WB by article with marketplace",
+      "method": "POST",
+      "path": "/",
+      "body": {"article": "217691959", "marketplace": "Wildberries"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Lookup WB by URL",
+      "method": "POST",
+      "path": "/",
+      "body": {"url": "https://www.wildberries.ru/catalog/217691959/detail.aspx"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Lookup OZON by article with marketplace",
+      "method": "POST",
+      "path": "/",
+      "body": {"article": "597240033", "marketplace": "OZON"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Lookup OZON by URL with slug",
+      "method": "POST",
+      "path": "/",
+      "body": {"url": "https://www.ozon.ru/product/futbolka-597240033/"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

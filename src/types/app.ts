@@ -6,6 +6,7 @@ export const TG_MINI_AUTH_URL: string = func2url['tg-mini-auth'];
 export const ADMIN_URL: string = func2url['reviews-admin'];
 export const TICKETS_URL: string = (func2url as Record<string, string>)['tickets'];
 export const TICKETS_ADMIN_URL: string = (func2url as Record<string, string>)['tickets-admin'];
+export const PRODUCT_LOOKUP_URL: string = (func2url as Record<string, string>)['product-lookup'];
 
 export interface Review {
   id: number;
