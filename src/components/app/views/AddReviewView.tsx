@@ -1,21 +1,13 @@
-import { useRef, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Icon from '@/components/ui/icon';
-import { PRODUCT_LOOKUP_URL } from '@/types/app';
+import { type AddReviewFormData, articleError, linkError, sellerError, textError, mentionsSellerInText } from './addReviewHelpers';
+import { ProductFields } from './ProductFields';
+import { ReviewContentFields } from './ReviewContentFields';
 
-export interface AddReviewFormData {
-  marketplace: string;
-  product_article: string;
-  product_link: string;
-  seller: string;
-  rating: number;
-  review_text: string;
-}
+export type { AddReviewFormData };
 
 interface AddReviewViewProps {
   uploadedFiles: File[];
@@ -27,80 +19,7 @@ interface AddReviewViewProps {
   initialData?: Partial<AddReviewFormData>;
 }
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-function isValidUrl(v: string) {
-  try { new URL(v); return true; } catch { return false; }
-}
-
-function articleError(v: string) {
-  if (!v) return null;
-  return /^\d+$/.test(v) ? null : 'Только цифры';
-}
-
-function linkError(v: string) {
-  if (!v) return null;
-  return isValidUrl(v) ? null : 'Введите корректную ссылку (начиная с https://)';
-}
-
-
-const SELLER_KEYWORDS = [
-  'продавец', 'продавца', 'продавцу', 'продавцом', 'продавце',
-  'магазин', 'магазина', 'магазину', 'магазином', 'магазине',
-  'поставщик', 'поставщика', 'поставщику',
-  'seller', 'shop', 'store',
-  'ооо', 'ип ', 'оао', 'зао', 'пао',
-];
-
-function mentionsSellerInText(text: string): boolean {
-  const lower = text.toLowerCase();
-  return SELLER_KEYWORDS.some(kw => lower.includes(kw));
-}
-
-function sellerError(v: string, required: boolean) {
-  if (required && !v.trim()) return 'В тексте отзыва упомянут продавец — укажите название';
-  if (!v) return null;
-  return /^[\p{L}0-9\s.,''«»"()/-]+$/u.test(v) ? null : 'Только буквы, цифры и базовые символы';
-}
-
-function textError(v: string) {
-  if (!v) return null;
-  return v.length >= 50 ? null : `Минимум 50 символов (сейчас ${v.length})`;
-}
-
-// ─── FieldError ──────────────────────────────────────────────────────────────
-
-function FieldError({ msg }: { msg: string | null }) {
-  if (!msg) return null;
-  return (
-    <p className="text-xs text-destructive mt-1 flex items-center gap-1">
-      <Icon name="AlertCircle" className="w-3 h-3 flex-shrink-0" />
-      {msg}
-    </p>
-  );
-}
-
-// ─── InfoPopover ──────────────────────────────────────────────────────────────
-
-function InfoPopover({ children, side = 'top' }: { children: React.ReactNode; side?: 'top' | 'bottom' | 'left' | 'right' }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className="p-0.5 align-middle">
-          <Icon name="Info" className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side={side} className="max-w-sm p-3 z-50 text-sm">
-        {children}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-// ─── Component ───────────────────────────────────────────────────────────────
-
 export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, userId, initialData }: AddReviewViewProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [marketplace, setMarketplace] = useState(initialData?.marketplace ?? '');
   const [productArticle, setProductArticle] = useState(initialData?.product_article ?? '');
   const [productLink, setProductLink] = useState(initialData?.product_link ?? '');
@@ -114,96 +33,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  const applyLookupResult = useCallback((data: { ok: boolean; marketplace?: string; article?: string; url?: string; error?: string }) => {
-    if (!data.ok) {
-      setLookupError(data.error ?? 'Не удалось определить товар');
-      return;
-    }
-    setLookupError(null);
-    if (data.marketplace) { setMarketplace(data.marketplace); setAutofilled(a => ({ ...a, marketplace: true })); }
-    if (data.article) { setProductArticle(data.article); setAutofilled(a => ({ ...a, article: true })); }
-    if (data.url) { setProductLink(data.url); setAutofilled(a => ({ ...a, link: true })); }
-  }, []);
-
-  async function lookupByArticle(art: string, mp: string) {
-    if (!art || !!articleError(art)) return;
-    setLookupLoading(true);
-    setLookupError(null);
-    try {
-      const res = await fetch(PRODUCT_LOOKUP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ article: art, marketplace: mp }),
-      });
-      const data = await res.json();
-      applyLookupResult(data);
-    } catch {
-      setLookupError('Ошибка соединения с сервером');
-    } finally {
-      setLookupLoading(false);
-    }
-  }
-
-  async function lookupByUrl(url: string) {
-    if (!url) return;
-    setLookupLoading(true);
-    setLookupError(null);
-    try {
-      const res = await fetch(PRODUCT_LOOKUP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-      const data = await res.json();
-      applyLookupResult(data);
-    } catch {
-      setLookupError('Ошибка соединения с сервером');
-    } finally {
-      setLookupLoading(false);
-    }
-  }
-
-  function handleArticleBlur() {
-    touch('article');
-    if (productArticle && !articleError(productArticle)) {
-      lookupByArticle(productArticle, marketplace);
-    }
-  }
-
-  function handleLinkBlur() {
-    touch('link');
-    if (productLink) {
-      lookupByUrl(productLink);
-    }
-  }
-
-  function handleArticleChange(value: string) {
-    setProductArticle(value);
-    setAutofilled(a => ({ ...a, article: false }));
-    setLookupError(null);
-  }
-
-  function handleLinkChange(value: string) {
-    setProductLink(value);
-    setAutofilled(a => ({ ...a, link: false }));
-    setLookupError(null);
-  }
-
   const sellerRequired = mentionsSellerInText(reviewText);
-
-  const handleSubmit = () => {
-    setTouched({ article: true, link: true, seller: true, text: true });
-    const hasErrors =
-      !marketplace ||
-      !productArticle || !!articleError(productArticle) ||
-      !productLink || !!linkError(productLink) ||
-      !!sellerError(seller, sellerRequired) ||
-      !rating ||
-      !!textError(reviewText) || reviewText.length < 50 ||
-      uploadedFiles.length < 2;
-    if (hasErrors) return;
-    onSubmit({ marketplace, product_article: productArticle, product_link: productLink, seller, rating, review_text: reviewText });
-  };
 
   const aErr = articleError(productArticle);
   const lErr = linkError(productLink);
@@ -218,6 +48,20 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
     !!rating &&
     reviewText.length >= 50 && !tErr &&
     uploadedFiles.length >= 2;
+
+  const handleSubmit = () => {
+    setTouched({ article: true, link: true, seller: true, text: true });
+    const hasErrors =
+      !marketplace ||
+      !productArticle || !!articleError(productArticle) ||
+      !productLink || !!linkError(productLink) ||
+      !!sellerError(seller, sellerRequired) ||
+      !rating ||
+      !!textError(reviewText) || reviewText.length < 50 ||
+      uploadedFiles.length < 2;
+    if (hasErrors) return;
+    onSubmit({ marketplace, product_article: productArticle, product_link: productLink, seller, rating, review_text: reviewText });
+  };
 
   return (
     <div className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-16">
@@ -277,208 +121,36 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
             </CardHeader>
             <CardContent className="space-y-4">
 
-              {/* Маркетплейс */}
-              <div>
-                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                  Маркетплейс *
-                  {autofilled.marketplace && (
-                    <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
-                      <Icon name="Sparkles" className="w-3 h-3" /> Определён автоматически
-                    </span>
-                  )}
-                </label>
-                <Select value={marketplace} onValueChange={v => { setMarketplace(v); setAutofilled(a => ({ ...a, marketplace: false })); }}>
-                  <SelectTrigger className="h-11 md:h-10">
-                    <SelectValue placeholder="Выберите маркетплейс" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Wildberries">Wildberries</SelectItem>
-                    <SelectItem value="OZON">OZON</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <ProductFields
+                marketplace={marketplace}
+                setMarketplace={setMarketplace}
+                productArticle={productArticle}
+                setProductArticle={setProductArticle}
+                productLink={productLink}
+                setProductLink={setProductLink}
+                autofilled={autofilled}
+                setAutofilled={setAutofilled}
+                lookupLoading={lookupLoading}
+                setLookupLoading={setLookupLoading}
+                lookupError={lookupError}
+                setLookupError={setLookupError}
+                touched={touched}
+                touch={touch}
+              />
 
-              {/* Артикул */}
-              <div>
-                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                  Артикул товара *
-                  {lookupLoading && <Icon name="Loader2" className="w-3 h-3 animate-spin text-muted-foreground" />}
-                  {!lookupLoading && autofilled.article && (
-                    <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
-                      <Icon name="Sparkles" className="w-3 h-3" /> Заполнен автоматически
-                    </span>
-                  )}
-                </label>
-                <Input
-                  value={productArticle}
-                  onChange={e => handleArticleChange(e.target.value)}
-                  onBlur={handleArticleBlur}
-                  placeholder="12345678"
-                  className={`h-11 md:h-10 ${touched.article && aErr ? 'border-destructive focus-visible:ring-destructive' : autofilled.article ? 'border-green-400' : ''}`}
-                  inputMode="numeric"
-                  disabled={lookupLoading}
-                />
-                {touched.article && <FieldError msg={aErr} />}
-              </div>
-
-              {/* Ссылка */}
-              <div>
-                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                  Ссылка на товар *
-                  {lookupLoading && <Icon name="Loader2" className="w-3 h-3 animate-spin text-muted-foreground" />}
-                  {!lookupLoading && autofilled.link && (
-                    <span className="text-xs text-green-600 font-normal flex items-center gap-0.5">
-                      <Icon name="Sparkles" className="w-3 h-3" /> Заполнена автоматически
-                    </span>
-                  )}
-                </label>
-                <Input
-                  value={productLink}
-                  onChange={e => handleLinkChange(e.target.value)}
-                  onBlur={handleLinkBlur}
-                  placeholder="https://wildberries.ru/catalog/... или https://ozon.ru/product/..."
-                  className={`h-11 md:h-10 ${touched.link && lErr ? 'border-destructive focus-visible:ring-destructive' : autofilled.link ? 'border-green-400' : ''}`}
-                  disabled={lookupLoading}
-                />
-                {touched.link && <FieldError msg={lErr} />}
-              </div>
-
-              {/* Ошибка lookup */}
-              {lookupError && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                  <Icon name="AlertTriangle" className="w-3.5 h-3.5 flex-shrink-0" />
-                  {lookupError}
-                </div>
-              )}
-
-              {/* Продавец */}
-              <div>
-                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                  Продавец
-                  {sellerRequired
-                    ? <span className="text-destructive font-normal text-xs">(обязательно — упомянут в отзыве)</span>
-                    : <span className="text-muted-foreground font-normal">(необязательно)</span>
-                  }
-                </label>
-                {sellerRequired && !seller && (
-                  <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5 mb-2">
-                    <Icon name="AlertTriangle" className="w-3.5 h-3.5 flex-shrink-0" />
-                    Вы упоминаете продавца в тексте — пожалуйста, укажите его название
-                  </div>
-                )}
-                <Input
-                  value={seller}
-                  onChange={e => setSeller(e.target.value)}
-                  onBlur={() => touch('seller')}
-                  placeholder="ООО «Название компании»"
-                  className={`h-11 md:h-10 ${touched.seller && sErr ? 'border-destructive focus-visible:ring-destructive' : sellerRequired && !seller ? 'border-amber-400' : ''}`}
-                />
-                {touched.seller && <FieldError msg={sErr} />}
-              </div>
-
-              {/* Оценка */}
-              <div>
-                <label className="text-sm font-medium mb-2 block">Оценка недовольства *</label>
-                <CardDescription className="text-xs mb-3">От 1 (немного недоволен) до 5 (крайне недоволен)</CardDescription>
-                <div className="flex gap-2 flex-wrap">
-                  {[1, 2, 3, 4, 5].map((r) => (
-                    <Button
-                      key={r}
-                      type="button"
-                      variant={rating === r ? 'default' : 'outline'}
-                      size="sm"
-                      className={`h-10 flex-1 min-w-[60px] md:flex-none ${rating === r ? 'bg-destructive border-destructive text-white' : 'hover:bg-destructive hover:text-white hover:border-destructive'}`}
-                      onClick={() => setRating(r)}
-                    >
-                      <Icon name="ThumbsDown" className="w-4 h-4 mr-1" />
-                      {r}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Текст отзыва */}
-              <div>
-                <label className="text-sm font-medium mb-2 block">Ваш отзыв *</label>
-                <Textarea
-                  value={reviewText}
-                  onChange={e => setReviewText(e.target.value)}
-                  onBlur={() => touch('text')}
-                  placeholder="Опишите свою ситуацию, проблему с товаром или продавцом..."
-                  className={`min-h-[120px] md:min-h-[150px] text-base ${touched.text && tErr ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                />
-                <div className="flex items-center justify-between mt-1">
-                  {touched.text && tErr
-                    ? <FieldError msg={tErr} />
-                    : <span />
-                  }
-                  <span className={`text-xs ml-auto ${reviewText.length >= 50 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                    {reviewText.length} / 50
-                  </span>
-                </div>
-              </div>
-
-              {/* Изображения */}
-              <div>
-                <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                  Изображения *
-                  <span className="text-destructive font-normal">(минимум 2)</span>
-                  <InfoPopover>
-                    <div className="space-y-2">
-                      <p className="font-semibold flex items-center gap-1">
-                        <Icon name="AlertTriangle" className="w-4 h-4 text-amber-500" />
-                        Обязательные изображения
-                      </p>
-                      <ol className="list-decimal ml-4 space-y-1 text-muted-foreground">
-                        <li>
-                          Скриншот из личного кабинета платформы, подтверждающий:
-                          <ul className="list-disc ml-4 mt-0.5 space-y-0.5">
-                            <li>факт совершения покупки (данные заказа и наименование товара);</li>
-                            <li>отклонение отзыва продавцом (текст отзыва + отметка об отклонении);</li>
-                            <li>отклонение запроса на возврат (с причиной отклонения).</li>
-                          </ul>
-                        </li>
-                        <li>Фотография купленного товара</li>
-                      </ol>
-                    </div>
-                  </InfoPopover>
-                </label>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={onFileUpload}
-                />
-                <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 md:p-8 text-center cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Icon name="Upload" className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-xs md:text-sm text-muted-foreground">1. Скриншот отклонённого отзыва из личного кабинета</p>
-                  <p className="text-xs md:text-sm text-muted-foreground">2. Фотография купленного товара</p>
-                  <p className="text-xs text-muted-foreground mt-2">Нажмите для выбора файлов</p>
-                </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-                        <Icon name="Image" className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span className="text-sm truncate flex-1">{file.name}</span>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onRemoveFile(index)}>
-                          <Icon name="X" className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    ))}
-                    <p className="text-xs text-muted-foreground">
-                      Загружено: {uploadedFiles.length} из минимум 2
-                    </p>
-                  </div>
-                )}
-              </div>
+              <ReviewContentFields
+                seller={seller}
+                setSeller={setSeller}
+                rating={rating}
+                setRating={setRating}
+                reviewText={reviewText}
+                setReviewText={setReviewText}
+                uploadedFiles={uploadedFiles}
+                onFileUpload={onFileUpload}
+                onRemoveFile={onRemoveFile}
+                touched={touched}
+                touch={touch}
+              />
 
               <Button
                 className="w-full gradient-bg h-12 md:h-11 text-base md:text-sm"
