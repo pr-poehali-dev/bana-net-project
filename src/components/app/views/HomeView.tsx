@@ -58,33 +58,33 @@ export function HomeView({ reviews, loading, stats, onNavigate, onOpenReview }: 
       <section className="py-8 md:py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
-            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow">
+            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onNavigate('add')}>
               <CardHeader className="py-4 md:py-6">
                 <div className="w-12 h-12 md:w-16 md:h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-                  <Icon name="MessageSquare" className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                  <Icon name="MessageSquarePlus" className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
-                <CardTitle className="text-2xl md:text-4xl font-bold gradient-text">{stats.totalReviews}</CardTitle>
-                <CardDescription className="text-sm md:text-lg">Опубликовано отзывов</CardDescription>
+                <CardTitle className="text-lg md:text-xl font-bold">Поделись опытом</CardTitle>
+                <CardDescription className="text-sm md:text-base">Напиши отзыв о товаре или продавце — помоги другим сделать правильный выбор</CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: '0.1s' }}>
+            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow cursor-pointer" style={{ animationDelay: '0.1s' }} onClick={() => onNavigate('reviews')}>
               <CardHeader className="py-4 md:py-6">
                 <div className="w-12 h-12 md:w-16 md:h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-                  <Icon name="Users" className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                  <Icon name="Search" className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
-                <CardTitle className="text-2xl md:text-4xl font-bold gradient-text">{stats.totalUsers}</CardTitle>
-                <CardDescription className="text-sm md:text-lg">Активных пользователей</CardDescription>
+                <CardTitle className="text-lg md:text-xl font-bold">Проверь продавца</CardTitle>
+                <CardDescription className="text-sm md:text-base">Найди отзывы о нужном товаре или магазине перед покупкой</CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow" style={{ animationDelay: '0.2s' }}>
+            <Card className="text-center animate-fade-in hover:shadow-lg transition-shadow cursor-pointer" style={{ animationDelay: '0.2s' }} onClick={() => onNavigate('support')}>
               <CardHeader className="py-4 md:py-6">
                 <div className="w-12 h-12 md:w-16 md:h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-                  <Icon name="TrendingUp" className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                  <Icon name="ShieldCheck" className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
-                <CardTitle className="text-2xl md:text-4xl font-bold gradient-text">{stats.publishedToday}</CardTitle>
-                <CardDescription className="text-sm md:text-lg">Новых за сегодня</CardDescription>
+                <CardTitle className="text-lg md:text-xl font-bold">Есть вопрос?</CardTitle>
+                <CardDescription className="text-sm md:text-base">Напиши нам — разберёмся и поможем в ближайшее время</CardDescription>
               </CardHeader>
             </Card>
           </div>
