@@ -54,16 +54,18 @@ def sanitize(text, max_len=5000):
     return clean[:max_len].strip()
 
 
-def notify_admin_new_ticket(ticket_id, subject, user_name):
+def notify_admin_new_ticket(ticket_id, subject, user_name, message_text):
     """Уведомляет администратора о новом обращении через Telegram."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     admin_chat_id = os.environ.get("ADMIN_TELEGRAM_ID")
     if not bot_token or not admin_chat_id:
         return
+    preview = message_text[:300] + ("..." if len(message_text) > 300 else "")
     text = (
         f"📬 <b>Новое обращение #{ticket_id}</b>\n\n"
         f"👤 Пользователь: {user_name}\n"
-        f"📋 Тема: {subject}"
+        f"📋 Тема: {subject}\n\n"
+        f"<b>Текст:</b>\n{preview}"
     )
     try:
         requests.post(
@@ -74,26 +76,6 @@ def notify_admin_new_ticket(ticket_id, subject, user_name):
     except Exception:
         pass
 
-
-def notify_user_answer(telegram_id, ticket_id, subject, answer_text):
-    """Уведомляет пользователя об ответе на его обращение."""
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not bot_token or not telegram_id:
-        return
-    preview = answer_text[:200] + ("..." if len(answer_text) > 200 else "")
-    text = (
-        f"💬 <b>Ответ на ваше обращение #{ticket_id}</b>\n\n"
-        f"📋 Тема: {subject}\n\n"
-        f"<b>Ответ:</b>\n{preview}"
-    )
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": telegram_id, "text": text, "parse_mode": "HTML"},
-            timeout=5,
-        )
-    except Exception:
-        pass
 
 
 def handler(event: dict, context) -> dict:
@@ -184,7 +166,7 @@ def handler(event: dict, context) -> dict:
         finally:
             conn.close()
 
-        notify_admin_new_ticket(ticket_id, subject, user_name)
+        notify_admin_new_ticket(ticket_id, subject, user_name, message)
         return ok({"id": ticket_id, "subject": subject, "status": "open"}, 201)
 
     # POST /tickets?action=reply — добавить сообщение в тикет

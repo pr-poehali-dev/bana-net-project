@@ -184,6 +184,8 @@ def handler(event: dict, context) -> dict:
             return err("ticket_id и message обязательны")
 
         conn = db()
+        subject = None
+        user_telegram_id = None
         try:
             cur = conn.cursor()
             cur.execute(
@@ -195,9 +197,14 @@ def handler(event: dict, context) -> dict:
             )
             ticket = cur.fetchone()
             if not ticket:
+                conn.close()
                 return err("Тикет не найден", 404)
             if ticket[2] == "closed":
+                conn.close()
                 return err("Тикет закрыт")
+
+            subject = ticket[1]
+            user_telegram_id = ticket[3]
 
             cur.execute(
                 f"INSERT INTO {s}ticket_messages (ticket_id, author_id, is_admin, body) VALUES (%s, %s, TRUE, %s)",
@@ -208,9 +215,6 @@ def handler(event: dict, context) -> dict:
                 (ticket_id,)
             )
             conn.commit()
-
-            subject = ticket[1]
-            user_telegram_id = ticket[3]
         finally:
             conn.close()
 
