@@ -62,13 +62,11 @@ def notify_user_answer(telegram_id, ticket_id, subject, answer_text):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not bot_token or not telegram_id:
         return
-    site_url = os.environ.get("SITE_URL", "")
     preview = answer_text[:200] + ("..." if len(answer_text) > 200 else "")
     text = (
         f"💬 <b>Ответ на ваше обращение #{ticket_id}</b>\n\n"
         f"📋 Тема: {subject}\n\n"
         f"<b>Ответ:</b>\n{preview}"
-        + (f"\n\n🔗 {site_url}" if site_url else "")
     )
     try:
         requests.post(
@@ -89,7 +87,6 @@ def notify_admin_user_reply(admin_chat_id, ticket_id, subject, user_name, site_u
         f"🔔 <b>Новое сообщение в обращении #{ticket_id}</b>\n\n"
         f"👤 Пользователь: {user_name}\n"
         f"📋 Тема: {subject}"
-        + (f"\n\n🔗 {site_url}" if site_url else "")
     )
     try:
         requests.post(

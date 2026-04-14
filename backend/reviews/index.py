@@ -114,13 +114,11 @@ def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not bot_token or not telegram_id:
         return
-    site_url = os.environ.get("SITE_URL", "")
     if status == "approved":
         text = (
             f"✅ <b>Ваш отзыв #{review_id} опубликован!</b>\n\n"
             f"🏪 Маркетплейс: {marketplace}\n\n"
             f"Ваш отзыв прошёл модерацию и теперь виден всем пользователям."
-            + (f"\n\n🔗 {site_url}" if site_url else "")
         )
     else:
         text = (
@@ -128,7 +126,6 @@ def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
             f"🏪 Маркетплейс: {marketplace}\n\n"
             + (f"💬 <b>Причина:</b> {admin_comment}\n\n" if admin_comment else "")
             + "Вы можете исправить отзыв и отправить повторно в разделе «Профиль»."
-            + (f"\n\n🔗 {site_url}" if site_url else "")
         )
     try:
         requests.post(
@@ -145,7 +142,6 @@ def notify_admin(review_id, marketplace, rating, review_text, user_name, product
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not admin_id or not bot_token:
         return
-    site_url = os.environ.get("SITE_URL", "")
     text = (
         f"📝 <b>Новый отзыв #{review_id} на модерации</b>\n\n"
         f"👤 Автор: {user_name}\n"
@@ -154,8 +150,7 @@ def notify_admin(review_id, marketplace, rating, review_text, user_name, product
         f"🏭 Продавец: {seller or '—'}\n"
         f"⭐ Оценка: {rating}/5\n"
         f"🖼 Фото: {images_count} шт.\n\n"
-        f"💬 {review_text[:400]}{'...' if len(review_text) > 400 else ''}\n\n"
-        f"🔗 {site_url}/?admin=1" if site_url else ""
+        f"💬 {review_text[:400]}{'...' if len(review_text) > 400 else ''}"
     )
     try:
         requests.post(

@@ -61,13 +61,11 @@ def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not bot_token or not telegram_id:
         return
-    site_url = os.environ.get("SITE_URL", "")
     if status == "approved":
         text = (
             f"✅ <b>Ваш отзыв #{review_id} опубликован!</b>\n\n"
             f"🏪 Маркетплейс: {marketplace}\n\n"
-            f"Ваш отзыв прошёл модерацию и теперь виден всем пользователям."
-            + (f"\n\n🔗 {site_url}" if site_url else "")
+            f"Ваш отзыв прошёл модерацию и теперь виден всем пользователями."
         )
     else:
         text = (
@@ -75,7 +73,6 @@ def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
             f"🏪 Маркетплейс: {marketplace}\n\n"
             + (f"💬 <b>Причина:</b> {admin_comment}\n\n" if admin_comment else "")
             + "Вы можете исправить отзыв и отправить повторно в разделе «Профиль»."
-            + (f"\n\n🔗 {site_url}" if site_url else "")
         )
     try:
         payload = json.dumps({"chat_id": telegram_id, "text": text, "parse_mode": "HTML"}).encode()
