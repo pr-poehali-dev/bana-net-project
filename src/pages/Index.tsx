@@ -34,7 +34,7 @@ const Index = () => {
   const isAdmin = user?.is_admin === 1;
 
   const { reviews, loading: reviewsLoading, reload: reloadReviews } = useReviews({ userId });
-  const { reviews: myReviews } = useReviews({ my: true, userId });
+  const { reviews: myReviews, reload: reloadMyReviews } = useReviews({ my: true, userId });
 
   const stats = {
     totalReviews: reviews.length,
@@ -141,6 +141,8 @@ const Index = () => {
       setUploadedFiles([]);
       setResubmitData(null);
       reloadReviews();
+      reloadMyReviews();
+      setCurrentView('profile');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       log(`❌ ${msg}`);
