@@ -261,7 +261,7 @@ const Index = () => {
             <img src={LOGO_URL} alt="BANaNET" className="w-8 h-8 object-contain" />
             <span className="font-bold gradient-text text-lg">BANaNET</span>
           </div>
-          <p className="text-sm">© 2024 Платформа честных отзывов</p>
+          <p className="text-sm">© 2025 Платформа честных отзывов</p>
         </div>
       </footer>
     </div>
