@@ -65,7 +65,7 @@ export default function AppNavigation({ currentView, mobileMenuOpen, setMobileMe
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
                   <img src={LOGO_URL} alt="BANaNET" className="w-10 h-10 rounded-xl object-contain" />
-                  <span className="gradient-text">BANaNET</span>
+                  <span className="gradient-text">BANa.NET</span>
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-4 mt-8">
