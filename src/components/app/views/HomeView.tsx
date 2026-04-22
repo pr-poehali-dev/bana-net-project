@@ -61,7 +61,7 @@ export function HomeView({ reviews, loading, stats, onNavigate, onOpenReview }: 
             <div className="flex items-start gap-3 mb-4">
               <span className="text-2xl">🚧</span>
               <div>
-                <p className="font-bold text-amber-900 text-lg">Внимание! Проект в стадии разработки 🚧</p>
+                <p className="font-bold text-amber-900 text-lg">Внимание! Проект в стадии разработки </p>
                 <p className="text-amber-800 text-sm mt-1">Мы активно развиваем нашу платформу, веря в её способность принести реальную пользу пользователям.</p>
               </div>
             </div>
