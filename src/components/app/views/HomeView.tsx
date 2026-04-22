@@ -55,6 +55,35 @@ export function HomeView({ reviews, loading, stats, onNavigate, onOpenReview }: 
         </div>
       </section>
 
+      <section className="py-6 bg-amber-50 border-y border-amber-200">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-start gap-3 mb-4">
+              <span className="text-2xl">🚧</span>
+              <div>
+                <p className="font-bold text-amber-900 text-lg">Внимание! Проект в стадии разработки 🚧</p>
+                <p className="text-amber-800 text-sm mt-1">Мы активно развиваем нашу платформу, веря в её способность принести реальную пользу пользователям.</p>
+              </div>
+            </div>
+            <div className="mb-4">
+              <p className="font-semibold text-amber-900 mb-2">✨ Наши цели:</p>
+              <ul className="space-y-1 text-sm text-amber-800">
+                <li>• Предоставить возможность публиковать подробные отзывы без страха блокировки.</li>
+                <li>• Создать платформу для размещения отзывов, не прошедших модерацию на других площадках.</li>
+                <li>• Помочь покупателям делать осознанный выбор и избегать некачественных товаров.</li>
+                <li>• Снизить количество недобросовестных продавцов и продаж поддельной продукции.</li>
+                <li>• Сформировать дружелюбное и сплочённое сообщество потребителей.</li>
+              </ul>
+            </div>
+            <div className="bg-amber-100 rounded-xl px-4 py-3 border border-amber-300">
+              <p className="text-amber-900 text-sm">🗣️ <strong>Мы открыты к вашим идеям и предложениям!</strong> Ваши идеи помогут сделать наше приложение ещё лучше.</p>
+              <p className="text-amber-800 text-sm mt-1">👉 Поделитесь своим мнением в разделе «Поддержка», и вместе мы создадим надёжную платформу!</p>
+              <p className="text-amber-900 text-sm font-semibold mt-2">✅ BANa.NET — это платформа для честных отзывов, свободных от цензуры маркетплейсов. 🫵 Ваше мнение важно для нас!</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="py-8 md:py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
