@@ -76,8 +76,7 @@ export function HomeView({ reviews, loading, stats, onNavigate, onOpenReview }: 
               </ul>
             </div>
             <div className="bg-amber-100 rounded-xl px-4 py-3 border border-amber-300">
-              <p className="text-amber-900 text-sm">🗣️ Мы открыты к вашим идеям и предложениям! 
-Возможно именно твои идеи помогут сделать наше приложение ещё лучше.</p>
+              <p className="text-amber-900 text-sm">🗣️ <strong>Мы открыты к вашим идеям и предложениям!</strong> Ваши идеи помогут сделать наше приложение ещё лучше.</p>
               <p className="text-amber-800 text-sm mt-1">👉 Поделитесь своим мнением в разделе «Поддержка», и вместе мы создадим надёжную платформу!</p>
               <p className="text-amber-900 text-sm font-semibold mt-2">✅ BANa.NET — это платформа для честных отзывов, свободных от цензуры маркетплейсов. 
 🫵 Твоё мнение важно для нас!</p>
