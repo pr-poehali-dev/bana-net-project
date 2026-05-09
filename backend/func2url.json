@@ -1,4 +1,5 @@
 {
+  "yandex-oauth": "https://functions.poehali.dev/ec919414-4198-44f3-bcf4-f0c2442a59a4",
   "vk-oauth-web": "https://functions.poehali.dev/044757e3-ca26-466e-95b9-2fa248435434",
   "google-oauth": "https://functions.poehali.dev/9e4dca91-9dc1-44e7-9a18-01e1594d9f90",
   "vk-mini-auth": "https://functions.poehali.dev/a5f52dc7-4629-4428-90c1-83da7b997dfd",

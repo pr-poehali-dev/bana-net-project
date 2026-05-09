@@ -5,7 +5,7 @@ import type { Platform } from '@/hooks/usePlatform';
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
 const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 
 interface AuthGateProps {
   loading: boolean;
@@ -53,8 +53,6 @@ function TelegramError({ botUrl }: { botUrl: string }) {
 }
 
 function WebAuthScreen() {
-  const hasGoogle = Boolean(GOOGLE_CLIENT_ID);
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-8">
       <div className="max-w-sm w-full text-center">
@@ -71,20 +69,17 @@ function WebAuthScreen() {
             className="w-full h-12 text-base bg-[#0077FF] hover:bg-[#0065DB] text-white"
             onClick={() => startWebAuth('vk')}
           >
-            <span className="mr-2 text-lg font-bold">VK</span>
+            <span className="mr-2 font-bold text-lg leading-none">VK</span>
             Войти через ВКонтакте
           </Button>
 
-          {hasGoogle && (
-            <Button
-              variant="outline"
-              className="w-full h-12 text-base border-gray-300"
-              onClick={() => startWebAuth('google')}
-            >
-              <Icon name="Globe" className="w-5 h-5 mr-2" />
-              Войти через Google
-            </Button>
-          )}
+          <Button
+            className="w-full h-12 text-base bg-[#FC3F1D] hover:bg-[#e0350f] text-white"
+            onClick={() => startWebAuth('yandex')}
+          >
+            <span className="mr-2 font-bold text-lg leading-none">Я</span>
+            Войти через Яндекс
+          </Button>
         </div>
 
         <p className="text-xs text-muted-foreground mt-6">

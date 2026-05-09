@@ -9,8 +9,8 @@ export interface AuthUser {
   avatar_url: string | null;
   telegram_id: string | null;
   vk_id: string | null;
-  google_id: string | null;
-  auth_provider: 'telegram' | 'vk' | 'google';
+  yandex_id: string | null;
+  auth_provider: 'telegram' | 'vk' | 'yandex';
   is_admin: number;
 }
 
@@ -21,7 +21,7 @@ const IS_DEV = import.meta.env.DEV;
 const TG_AUTH_URL: string = func2url['tg-mini-auth'];
 const VK_MINI_AUTH_URL: string = (func2url as Record<string, string>)['vk-mini-auth'] ?? '';
 const VK_OAUTH_URL: string = (func2url as Record<string, string>)['vk-oauth-web'] ?? '';
-const GOOGLE_OAUTH_URL: string = (func2url as Record<string, string>)['google-oauth'] ?? '';
+const YANDEX_OAUTH_URL: string = (func2url as Record<string, string>)['yandex-oauth'] ?? '';
 
 const DEV_USER: AuthUser = {
   id: 13,
@@ -29,7 +29,7 @@ const DEV_USER: AuthUser = {
   avatar_url: null,
   telegram_id: 'dev_poehali',
   vk_id: null,
-  google_id: null,
+  yandex_id: null,
   auth_provider: 'telegram',
   is_admin: 1,
 };
@@ -110,10 +110,10 @@ async function authViaVKMini(): Promise<{ token: string; user: AuthUser }> {
   return data as { token: string; user: AuthUser };
 }
 
-export type WebAuthProvider = 'vk' | 'google';
+export type WebAuthProvider = 'vk' | 'yandex';
 
 function buildVKOAuthUrl(): string {
-  const clientId = import.meta.env.VITE_VK_APP_ID ?? '54584737';
+  const clientId = '54584737';
   const redirectUri = `${window.location.origin}/auth/vk/callback`;
   const params = new URLSearchParams({
     client_id: clientId,
@@ -126,22 +126,19 @@ function buildVKOAuthUrl(): string {
   return `https://oauth.vk.com/authorize?${params.toString()}`;
 }
 
-function buildGoogleOAuthUrl(): string {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
-  const redirectUri = `${window.location.origin}/auth/google/callback`;
+function buildYandexOAuthUrl(): string {
+  const clientId = import.meta.env.VITE_YANDEX_CLIENT_ID ?? '';
+  const redirectUri = `${window.location.origin}/auth/yandex/callback`;
   const params = new URLSearchParams({
+    response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'openid email profile',
-    access_type: 'offline',
-    prompt: 'select_account',
   });
-  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  return `https://oauth.yandex.ru/authorize?${params.toString()}`;
 }
 
 export function startWebAuth(provider: WebAuthProvider) {
-  const url = provider === 'vk' ? buildVKOAuthUrl() : buildGoogleOAuthUrl();
+  const url = provider === 'vk' ? buildVKOAuthUrl() : buildYandexOAuthUrl();
   window.location.href = url;
 }
 
@@ -153,14 +150,14 @@ async function handleOAuthCallback(): Promise<{ token: string; user: AuthUser } 
   if (!code) return null;
 
   let authUrl = '';
-  let provider: 'vk' | 'google' | null = null;
+  let provider: 'vk' | 'yandex' | null = null;
 
   if (path.includes('/auth/vk/callback')) {
     authUrl = VK_OAUTH_URL;
     provider = 'vk';
-  } else if (path.includes('/auth/google/callback')) {
-    authUrl = GOOGLE_OAUTH_URL;
-    provider = 'google';
+  } else if (path.includes('/auth/yandex/callback')) {
+    authUrl = YANDEX_OAUTH_URL;
+    provider = 'yandex';
   }
 
   if (!authUrl || !provider) return null;
