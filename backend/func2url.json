@@ -1,4 +1,7 @@
 {
+  "vk-oauth-web": "https://functions.poehali.dev/044757e3-ca26-466e-95b9-2fa248435434",
+  "google-oauth": "https://functions.poehali.dev/9e4dca91-9dc1-44e7-9a18-01e1594d9f90",
+  "vk-mini-auth": "https://functions.poehali.dev/a5f52dc7-4629-4428-90c1-83da7b997dfd",
   "product-lookup": "https://functions.poehali.dev/367a0e48-ff5c-452f-a74f-f514a643c856",
   "tickets": "https://functions.poehali.dev/b6ddeedd-aa8e-460b-9ce7-aa6a86bd6a9a",
   "tickets-admin": "https://functions.poehali.dev/4133d939-4282-4dbf-acf3-a24bd7f87c24",

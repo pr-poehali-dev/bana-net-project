@@ -181,7 +181,7 @@ def handler(event: dict, context) -> dict:
         if not user:
             return json_response(401, {"error": "User not found"})
         print(f"[HANDLER] Token valid for user_id={user['id']}")
-        return json_response(200, {"user": user})
+        return json_response(200, {"user": {**user, "vk_id": None, "google_id": None, "auth_provider": "telegram"}})
 
     body = json.loads(event.get("body") or "{}")
     init_data = body.get("initData", "")
@@ -210,6 +210,9 @@ def handler(event: dict, context) -> dict:
             "name": user["name"],
             "avatar_url": user["avatar_url"],
             "telegram_id": user["telegram_id"],
+            "vk_id": None,
+            "google_id": None,
+            "auth_provider": "telegram",
             "is_admin": user["is_admin"],
         }
     })
