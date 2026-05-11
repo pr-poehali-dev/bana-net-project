@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
-import { startWebAuth } from '@/hooks/useAuth';
 import type { AuthUser } from '@/hooks/useAuth';
 import type { Platform } from '@/hooks/usePlatform';
 import { GoogleLoginButton } from '@/components/extensions/google-auth/GoogleLoginButton';
 import { useGoogleAuth } from '@/components/extensions/google-auth/useGoogleAuth';
+import { VkLoginButton } from '@/components/extensions/vk-auth/VkLoginButton';
+import { useVkAuth } from '@/components/extensions/vk-auth/useVkAuth';
 
 const GOOGLE_AUTH_URL = 'https://functions.poehali.dev/952eae04-f208-4f40-9276-f30d16a5eec0';
 const GOOGLE_API_URLS = {
@@ -13,6 +14,14 @@ const GOOGLE_API_URLS = {
   callback: `${GOOGLE_AUTH_URL}?action=callback`,
   refresh: `${GOOGLE_AUTH_URL}?action=refresh`,
   logout: `${GOOGLE_AUTH_URL}?action=logout`,
+};
+
+const VK_AUTH_URL = 'https://functions.poehali.dev/895f5597-716b-4457-ace9-96a846ec50aa';
+const VK_API_URLS = {
+  authUrl: `${VK_AUTH_URL}?action=auth-url`,
+  callback: `${VK_AUTH_URL}?action=callback`,
+  refresh: `${VK_AUTH_URL}?action=refresh`,
+  logout: `${VK_AUTH_URL}?action=logout`,
 };
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
@@ -94,6 +103,24 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
       }
     },
   });
+  const vkAuth = useVkAuth({
+    apiUrls: VK_API_URLS,
+    onAuthChange: (vkUser) => {
+      if (vkUser && onGoogleLogin) {
+        const accessToken = localStorage.getItem('vk_auth_access_token') || '';
+        const authUser: AuthUser = {
+          id: vkUser.id,
+          name: vkUser.name || 'VK User',
+          avatar_url: vkUser.avatar_url,
+          vk_id: vkUser.vk_id,
+          email: vkUser.email,
+          is_admin: 0,
+          auth_provider: 'vk',
+        };
+        onGoogleLogin(accessToken, authUser);
+      }
+    },
+  });
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-8">
@@ -115,22 +142,12 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
           />
 
           {/* ВКонтакте */}
-          <Button
-            className="w-full h-12 text-base bg-[#0077FF] hover:bg-[#0065DB] text-white"
-            onClick={() => startWebAuth('vk')}
-          >
-            <span className="mr-2 font-bold text-lg leading-none">VK</span>
-            Войти через ВКонтакте
-          </Button>
-
-          {/* Яндекс */}
-          <Button
-            className="w-full h-12 text-base bg-[#FC3F1D] hover:bg-[#e0350f] text-white"
-            onClick={() => startWebAuth('yandex')}
-          >
-            <span className="mr-2 font-bold text-lg leading-none">Я</span>
-            Войти через Яндекс
-          </Button>
+          <VkLoginButton
+            onClick={vkAuth.login}
+            isLoading={vkAuth.isLoading}
+            buttonText="Войти через ВКонтакте"
+            className="w-full h-12 text-base"
+          />
 
           {/* Telegram Bot */}
           <Button
