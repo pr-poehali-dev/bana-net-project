@@ -3,6 +3,16 @@ import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { startWebAuth } from '@/hooks/useAuth';
 import type { Platform } from '@/hooks/usePlatform';
+import { GoogleLoginButton } from '@/components/extensions/google-auth/GoogleLoginButton';
+import { useGoogleAuth } from '@/components/extensions/google-auth/useGoogleAuth';
+
+const GOOGLE_AUTH_URL = 'https://functions.poehali.dev/952eae04-f208-4f40-9276-f30d16a5eec0';
+const GOOGLE_API_URLS = {
+  authUrl: `${GOOGLE_AUTH_URL}?action=auth-url`,
+  callback: `${GOOGLE_AUTH_URL}?action=callback`,
+  refresh: `${GOOGLE_AUTH_URL}?action=refresh`,
+  logout: `${GOOGLE_AUTH_URL}?action=logout`,
+};
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
 const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
@@ -64,6 +74,7 @@ interface BeforeInstallPromptEvent extends Event {
 function WebAuthScreen() {
   const botUrl = BOT_USERNAME ? `https://t.me/${BOT_USERNAME}` : 'https://t.me';
   const { canInstall, isInstalled, install } = usePWAInstall();
+  const googleAuth = useGoogleAuth({ apiUrls: GOOGLE_API_URLS });
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-8">
@@ -94,6 +105,13 @@ function WebAuthScreen() {
             <span className="mr-2 font-bold text-lg leading-none">Я</span>
             Войти через Яндекс
           </Button>
+
+          {/* Google */}
+          <GoogleLoginButton
+            onClick={googleAuth.login}
+            isLoading={googleAuth.isLoading}
+            className="w-full h-12 text-base"
+          />
 
           {/* Telegram Bot */}
           <Button
