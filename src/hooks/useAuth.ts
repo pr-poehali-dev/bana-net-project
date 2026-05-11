@@ -8,6 +8,7 @@ export interface AuthUser {
   telegram_id?: string;
   google_id?: string;
   vk_id?: string;
+  yandex_id?: string;
   email?: string | null;
   is_admin: number;
   auth_provider?: string;

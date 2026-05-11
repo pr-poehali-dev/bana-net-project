@@ -7,6 +7,8 @@ import { GoogleLoginButton } from '@/components/extensions/google-auth/GoogleLog
 import { useGoogleAuth } from '@/components/extensions/google-auth/useGoogleAuth';
 import { VkLoginButton } from '@/components/extensions/vk-auth/VkLoginButton';
 import { useVkAuth } from '@/components/extensions/vk-auth/useVkAuth';
+import { YandexLoginButton } from '@/components/extensions/yandex-auth/YandexLoginButton';
+import { useYandexAuth } from '@/components/extensions/yandex-auth/useYandexAuth';
 
 const GOOGLE_AUTH_URL = 'https://functions.poehali.dev/952eae04-f208-4f40-9276-f30d16a5eec0';
 const GOOGLE_API_URLS = {
@@ -22,6 +24,14 @@ const VK_API_URLS = {
   callback: `${VK_AUTH_URL}?action=callback`,
   refresh: `${VK_AUTH_URL}?action=refresh`,
   logout: `${VK_AUTH_URL}?action=logout`,
+};
+
+const YANDEX_AUTH_URL = 'https://functions.poehali.dev/c517e076-c443-4b37-a995-026ec12c67ba';
+const YANDEX_API_URLS = {
+  authUrl: `${YANDEX_AUTH_URL}?action=auth-url`,
+  callback: `${YANDEX_AUTH_URL}?action=callback`,
+  refresh: `${YANDEX_AUTH_URL}?action=refresh`,
+  logout: `${YANDEX_AUTH_URL}?action=logout`,
 };
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
@@ -121,6 +131,24 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
       }
     },
   });
+  const yandexAuth = useYandexAuth({
+    apiUrls: YANDEX_API_URLS,
+    onAuthChange: (yandexUser) => {
+      if (yandexUser && onGoogleLogin) {
+        const accessToken = localStorage.getItem('yandex_auth_access_token') || '';
+        const authUser: AuthUser = {
+          id: yandexUser.id,
+          name: yandexUser.name || yandexUser.email || 'Яндекс Пользователь',
+          avatar_url: yandexUser.avatar_url,
+          yandex_id: yandexUser.yandex_id,
+          email: yandexUser.email,
+          is_admin: 0,
+          auth_provider: 'yandex',
+        };
+        onGoogleLogin(accessToken, authUser);
+      }
+    },
+  });
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-8">
@@ -146,6 +174,13 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
             onClick={vkAuth.login}
             isLoading={vkAuth.isLoading}
             buttonText="Войти через ВКонтакте"
+            className="w-full h-12 text-base"
+          />
+
+          {/* Яндекс */}
+          <YandexLoginButton
+            onClick={yandexAuth.login}
+            isLoading={yandexAuth.isLoading}
             className="w-full h-12 text-base"
           />
 
