@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import bridge from '@vkontakte/vk-bridge';
 
 export type Platform = 'telegram' | 'vk' | 'pwa' | 'web';
 
@@ -35,7 +34,6 @@ function detectPlatform(): Platform {
     hashParams.has('vk_app_id');
 
   if (hasVkParams) {
-    bridge.send('VKWebAppInit').catch(() => undefined);
     return 'vk';
   }
 
