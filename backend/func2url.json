@@ -1,4 +1,5 @@
 {
+  "push-notifications": "https://functions.poehali.dev/9b464c0b-bf8f-4e62-beda-eb83dc3617ed",
   "yandex-auth-yandex-auth": "https://functions.poehali.dev/c517e076-c443-4b37-a995-026ec12c67ba",
   "vk-auth-vk-auth": "https://functions.poehali.dev/895f5597-716b-4457-ace9-96a846ec50aa",
   "google-auth-google-auth": "https://functions.poehali.dev/952eae04-f208-4f40-9276-f30d16a5eec0",

@@ -7,11 +7,12 @@ import Icon from '@/components/ui/icon';
 import { type Review } from '@/components/app/ReviewCard';
 import { ReviewDetail } from '@/components/app/ReviewCard';
 import { formatDate } from '@/types/app';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 type Filter = 'all' | 'approved' | 'pending' | 'rejected';
 
 interface ProfileViewProps {
-  user: { id: number; name: string; avatar_url: string | null; telegram_id: string } | null;
+  user: { id: number; name: string; avatar_url: string | null; telegram_id?: string } | null;
   reviews: Review[];
   onResubmit?: (review: Review) => void;
 }
@@ -19,6 +20,7 @@ interface ProfileViewProps {
 export function ProfileView({ user, reviews, onResubmit }: ProfileViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [openReview, setOpenReview] = useState<Review | null>(null);
+  const push = usePushNotifications(user?.id ?? null);
 
   const publishedCount = reviews.filter(r => r.status === 'approved').length;
   const pendingCount = reviews.filter(r => r.status === 'pending').length;
@@ -78,7 +80,33 @@ export function ProfileView({ user, reviews, onResubmit }: ProfileViewProps) {
                   </AvatarFallback>
                 </Avatar>
                 <CardTitle className="text-base">{user?.name || 'Пользователь'}</CardTitle>
-                <CardDescription>@{user?.telegram_id || 'Telegram'}</CardDescription>
+                <CardDescription>{user?.telegram_id ? `@${user.telegram_id}` : 'Пользователь'}</CardDescription>
+                {push.isSupported && (
+                  <div className="mt-3">
+                    {push.isSubscribed ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs h-8 border-green-200 text-green-700 hover:bg-green-50"
+                        onClick={push.unsubscribe}
+                        disabled={push.isLoading}
+                      >
+                        <Icon name="Bell" className="w-3.5 h-3.5 mr-1.5" />
+                        Уведомления включены
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full text-xs h-8 gradient-bg text-white"
+                        onClick={push.subscribe}
+                        disabled={push.isLoading || push.permission === 'denied'}
+                      >
+                        <Icon name="BellOff" className="w-3.5 h-3.5 mr-1.5" />
+                        {push.permission === 'denied' ? 'Уведомления заблокированы' : 'Включить уведомления'}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardHeader>
             </Card>
 

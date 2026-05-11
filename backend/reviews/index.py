@@ -110,6 +110,27 @@ def upload_to_s3(data: bytes, filename: str) -> str:
     return f"https://cdn.poehali.dev/projects/{access_key}/bucket/{key}"
 
 
+def send_push_to_user(user_id, review_id, status, marketplace, admin_comment):
+    """Отправляет Web Push уведомление через push-notifications функцию."""
+    push_url = os.environ.get("PUSH_NOTIFICATIONS_URL")
+    if not push_url:
+        return
+    if status == "approved":
+        title = "Отзыв опубликован!"
+        message = f"Ваш отзыв о {marketplace} прошёл модерацию и теперь виден всем."
+    else:
+        title = "Отзыв отклонён"
+        message = (f"Причина: {admin_comment}" if admin_comment else f"Ваш отзыв о {marketplace} был отклонён. Исправьте и отправьте повторно.")
+    try:
+        requests.post(
+            f"{push_url}?action=send",
+            json={"user_id": user_id, "title": title, "message": message, "url": "/"},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
 def notify_user(telegram_id, review_id, status, marketplace, admin_comment):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not bot_token or not telegram_id:
@@ -571,9 +592,9 @@ def handle_moderate(event, payload):
     try:
         cur = conn.cursor()
 
-        # Получаем данные отзыва и telegram_id автора для уведомления
+        # Получаем данные отзыва и автора для уведомлений
         cur.execute(
-            f"""SELECT r.marketplace, u.telegram_id
+            f"""SELECT r.marketplace, u.telegram_id, r.user_id
                 FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id
                 WHERE r.id = %s""",
             (review_id,),
@@ -595,6 +616,7 @@ def handle_moderate(event, payload):
 
         if row:
             notify_user(row[1], review_id, status, row[0], admin_comment)
+            send_push_to_user(row[2], review_id, status, row[0], admin_comment)
 
         return ok({"ok": True, "status": status, "review_id": review_id})
     finally:

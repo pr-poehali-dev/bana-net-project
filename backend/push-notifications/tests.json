@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Get VAPID public key",
+      "method": "GET",
+      "path": "/?action=vapid-key",
+      "expectedStatus": 200,
+      "expectedBody": {"public_key": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

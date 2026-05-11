@@ -1,7 +1,6 @@
 const CACHE_NAME = 'bananet-v1';
 const STATIC_CACHE = 'bananet-static-v1';
 
-// Ресурсы для предварительного кэширования
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
@@ -30,7 +29,6 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API и внешние запросы — только сеть
   if (
     url.hostname !== self.location.hostname ||
     request.url.includes('functions.poehali.dev') ||
@@ -41,7 +39,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML навигация — network first, fallback на кэш
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -55,7 +52,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // JS/CSS/шрифты — cache first, обновляем в фоне
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request).then((response) => {
@@ -66,6 +62,48 @@ self.addEventListener('fetch', (event) => {
         return response;
       });
       return cached || fetchPromise;
+    })
+  );
+});
+
+// =============================================================================
+// Push уведомления
+// =============================================================================
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: 'BANaNET', body: event.data.text() };
+  }
+
+  const title = data.title || 'BANaNET';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png',
+    badge: 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png',
+    data: { url: data.url || '/' },
+    vibrate: [200, 100, 200],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(url);
     })
   );
 });
