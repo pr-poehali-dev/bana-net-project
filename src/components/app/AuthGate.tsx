@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { startWebAuth } from '@/hooks/useAuth';
+import type { AuthUser } from '@/hooks/useAuth';
 import type { Platform } from '@/hooks/usePlatform';
 import { GoogleLoginButton } from '@/components/extensions/google-auth/GoogleLoginButton';
 import { useGoogleAuth } from '@/components/extensions/google-auth/useGoogleAuth';
@@ -21,6 +22,7 @@ interface AuthGateProps {
   loading: boolean;
   error?: string | null;
   platform: Platform;
+  onGoogleLogin?: (accessToken: string, user: AuthUser) => void;
 }
 
 function LoadingScreen() {
@@ -71,10 +73,27 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-function WebAuthScreen() {
+function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoogleLogin'] }) {
   const botUrl = BOT_USERNAME ? `https://t.me/${BOT_USERNAME}` : 'https://t.me';
   const { canInstall, isInstalled, install } = usePWAInstall();
-  const googleAuth = useGoogleAuth({ apiUrls: GOOGLE_API_URLS });
+  const googleAuth = useGoogleAuth({
+    apiUrls: GOOGLE_API_URLS,
+    onAuthChange: (googleUser) => {
+      if (googleUser && onGoogleLogin) {
+        const accessToken = localStorage.getItem('google_auth_access_token') || '';
+        const authUser: AuthUser = {
+          id: googleUser.id,
+          name: googleUser.name || googleUser.email || 'Google User',
+          avatar_url: googleUser.avatar_url,
+          google_id: googleUser.google_id,
+          email: googleUser.email,
+          is_admin: 0,
+          auth_provider: 'google',
+        };
+        onGoogleLogin(accessToken, authUser);
+      }
+    },
+  });
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-8">
@@ -88,6 +107,13 @@ function WebAuthScreen() {
         <p className="text-sm font-medium text-gray-700 mb-4">Войдите, чтобы продолжить</p>
 
         <div className="flex flex-col gap-3">
+          {/* Google */}
+          <GoogleLoginButton
+            onClick={googleAuth.login}
+            isLoading={googleAuth.isLoading}
+            className="w-full h-12 text-base"
+          />
+
           {/* ВКонтакте */}
           <Button
             className="w-full h-12 text-base bg-[#0077FF] hover:bg-[#0065DB] text-white"
@@ -105,13 +131,6 @@ function WebAuthScreen() {
             <span className="mr-2 font-bold text-lg leading-none">Я</span>
             Войти через Яндекс
           </Button>
-
-          {/* Google */}
-          <GoogleLoginButton
-            onClick={googleAuth.login}
-            isLoading={googleAuth.isLoading}
-            className="w-full h-12 text-base"
-          />
 
           {/* Telegram Bot */}
           <Button
@@ -163,7 +182,7 @@ function WebAuthScreen() {
   );
 }
 
-export default function AuthGate({ loading, error, platform }: AuthGateProps) {
+export default function AuthGate({ loading, error, platform, onGoogleLogin }: AuthGateProps) {
   if (loading) return <LoadingScreen />;
 
   if (platform === 'telegram' && error) {
@@ -195,5 +214,5 @@ export default function AuthGate({ loading, error, platform }: AuthGateProps) {
     );
   }
 
-  return <WebAuthScreen />;
+  return <WebAuthScreen onGoogleLogin={onGoogleLogin} />;
 }

@@ -22,11 +22,20 @@ export default function GoogleCallback() {
 
     const params = new URLSearchParams(window.location.search);
     auth.handleCallback(params).then((success) => {
-      if (success) {
-        navigate('/', { replace: true });
-      } else {
-        navigate('/?auth_error=google', { replace: true });
+      if (success && auth.user) {
+        const authUser = {
+          id: auth.user.id,
+          name: auth.user.name || auth.user.email || 'Google User',
+          avatar_url: auth.user.avatar_url,
+          google_id: auth.user.google_id,
+          email: auth.user.email,
+          is_admin: 0,
+          auth_provider: 'google',
+        };
+        localStorage.setItem('auth_user', JSON.stringify(authUser));
+        localStorage.setItem('google_auth_access_token', localStorage.getItem('google_auth_access_token') || '');
       }
+      navigate('/', { replace: true });
     });
   }, []);
 
