@@ -11,9 +11,11 @@ import json
 import os
 import psycopg2
 import base64
-import subprocess
 import time
 import requests
+from ecdsa import SigningKey, NIST256p
+from ecdsa.util import sigencode_string
+from urllib.parse import urlparse
 
 
 CORS = {
@@ -35,6 +37,10 @@ def get_db():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
 
+def b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode().rstrip('=')
+
+
 def handler(event: dict, context) -> dict:
     """Web Push: подписки и отправка уведомлений пользователям."""
     if event.get('httpMethod') == 'OPTIONS':
@@ -42,7 +48,6 @@ def handler(event: dict, context) -> dict:
 
     qs = event.get('queryStringParameters') or {}
     action = qs.get('action', '')
-    method = event.get('httpMethod', 'GET')
 
     if action == 'vapid-key':
         return ok({'public_key': os.environ.get('VAPID_PUBLIC_KEY', '')})
@@ -64,21 +69,15 @@ def handler(event: dict, context) -> dict:
 
 
 def handle_generate_keys():
-    """Генерирует VAPID ключи через openssl."""
-    priv_pem = subprocess.check_output(
-        ['openssl', 'ecparam', '-name', 'prime256v1', '-genkey', '-noout', '-outform', 'PEM'],
-        stderr=subprocess.DEVNULL
-    ).decode()
-
-    pub_der = subprocess.check_output(
-        ['openssl', 'ec', '-pubout', '-outform', 'DER'],
-        input=priv_pem.encode(), stderr=subprocess.DEVNULL
-    )
-    pub_b64 = base64.urlsafe_b64encode(pub_der[-65:]).decode().rstrip('=')
-
+    """Генерирует VAPID ключи (EC P-256) через ecdsa."""
+    sk = SigningKey.generate(curve=NIST256p)
+    vk = sk.get_verifying_key()
+    private_pem = sk.to_pem().decode()
+    pub_point = b'\x04' + vk.to_string()
+    public_key = b64url(pub_point)
     return ok({
-        'VAPID_PRIVATE_KEY': priv_pem,
-        'VAPID_PUBLIC_KEY': pub_b64,
+        'VAPID_PRIVATE_KEY': private_pem,
+        'VAPID_PUBLIC_KEY': public_key,
         'note': 'Сохрани оба значения в секреты проекта.',
     })
 
@@ -99,7 +98,9 @@ def handle_subscribe(user_id, body):
         "ON CONFLICT (user_id, endpoint) DO UPDATE SET p256dh=%s, auth=%s",
         (user_id, endpoint, p256dh, auth, p256dh, auth)
     )
-    conn.commit(); cur.close(); conn.close()
+    conn.commit()
+    cur.close()
+    conn.close()
     return ok({'ok': True})
 
 
@@ -114,33 +115,24 @@ def handle_unsubscribe(user_id, body):
             'UPDATE push_subscriptions SET endpoint=endpoint WHERE user_id=%s AND endpoint=%s',
             (user_id, endpoint)
         )
-    conn.commit(); cur.close(); conn.close()
+    conn.commit()
+    cur.close()
+    conn.close()
     return ok({'ok': True})
 
 
 def build_vapid_token(endpoint: str, private_pem: str) -> str:
-    from urllib.parse import urlparse
+    """Формирует подписанный VAPID JWT через ecdsa."""
     audience = '{0.scheme}://{0.netloc}'.format(urlparse(endpoint))
     now = int(time.time())
-    header = base64.urlsafe_b64encode(b'{"typ":"JWT","alg":"ES256"}').decode().rstrip('=')
+    header = b64url(b'{"typ":"JWT","alg":"ES256"}')
     payload_data = json.dumps({"aud": audience, "exp": now + 43200, "sub": "mailto:admin@bana.net.ru"})
-    payload = base64.urlsafe_b64encode(payload_data.encode()).decode().rstrip('=')
+    payload = b64url(payload_data.encode())
     signing_input = f"{header}.{payload}".encode()
-
-    sig_der = subprocess.check_output(
-        ['openssl', 'dgst', '-sha256', '-sign', '/dev/stdin'],
-        input=private_pem.encode() + signing_input,
-        stderr=subprocess.DEVNULL
-    )
-    # DER → R||S
-    i = 2
-    assert sig_der[i] == 0x02; i += 1
-    r_len = sig_der[i]; i += 1; r = sig_der[i:i+r_len]; i += r_len
-    assert sig_der[i] == 0x02; i += 1
-    s_len = sig_der[i]; i += 1; s = sig_der[i:i+s_len]
-    raw = r[-32:].rjust(32, b'\x00') + s[-32:].rjust(32, b'\x00')
-    sig = base64.urlsafe_b64encode(raw).decode().rstrip('=')
-    return f"{header}.{payload}.{sig}"
+    sk = SigningKey.from_pem(private_pem)
+    import hashlib
+    sig = sk.sign(signing_input, hashfunc=hashlib.sha256, sigencode=sigencode_string)
+    return f"{header}.{payload}.{b64url(sig)}"
 
 
 def handle_send(body):
@@ -156,7 +148,9 @@ def handle_send(body):
     conn = get_db()
     cur = conn.cursor()
     cur.execute('SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id=%s', (user_id,))
-    subs = cur.fetchall(); cur.close(); conn.close()
+    subs = cur.fetchall()
+    cur.close()
+    conn.close()
 
     if not subs:
         return ok({'sent': 0})

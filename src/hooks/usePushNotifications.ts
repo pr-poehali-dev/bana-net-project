@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import func2url from '../../backend/func2url.json';
 
-const PUSH_URL: string = (func2url as Record<string, string>)['push-notifications'] || '';
+const PUSH_URL: string = (func2url as Record<string, string>)['reviews-notify'] || '';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
