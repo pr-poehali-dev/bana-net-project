@@ -2,6 +2,9 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './index.css'
+import bridge from '@vkontakte/vk-bridge';
+
+bridge.send('VKWebAppInit');
 
 // Версия билда — при несовпадении сбрасываем кэш и перезагружаем
 const BUILD = '6110f99';
