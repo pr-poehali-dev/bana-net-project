@@ -41,7 +41,7 @@ interface UseYandexAuthReturn {
   error: string | null;
   accessToken: string | null;
   login: () => Promise<void>;
-  handleCallback: (urlParams?: URLSearchParams) => Promise<boolean>;
+  handleCallback: (urlParams?: URLSearchParams) => Promise<boolean | string>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   getAuthHeader: () => { Authorization: string } | {};
@@ -263,7 +263,7 @@ export function useYandexAuth(options: UseYandexAuthOptions): UseYandexAuthRetur
         setUser(data.user);
         setStoredRefreshToken(data.refresh_token);
         scheduleRefresh(data.expires_in, refreshTokenFn);
-        return true;
+        return data.access_token as string;
       } catch (err) {
         setError("Network error");
         return false;

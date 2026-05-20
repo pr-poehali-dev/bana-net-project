@@ -21,8 +21,8 @@ export default function YandexCallback() {
     handled.current = true;
 
     const params = new URLSearchParams(window.location.search);
-    auth.handleCallback(params).then((success) => {
-      if (success && auth.user) {
+    auth.handleCallback(params).then((result) => {
+      if (result && auth.user) {
         const authUser = {
           id: auth.user.id,
           name: auth.user.name || auth.user.email || 'Яндекс Пользователь',
@@ -33,6 +33,9 @@ export default function YandexCallback() {
           auth_provider: 'yandex',
         };
         localStorage.setItem('auth_user', JSON.stringify(authUser));
+        if (typeof result === 'string') {
+          localStorage.setItem('yandex_auth_access_token', result);
+        }
       }
       navigate('/', { replace: true });
     });
