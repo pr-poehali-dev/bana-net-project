@@ -43,7 +43,7 @@ def auth_admin(event):
         return None
     try:
         payload = jwt.decode(token[7:], os.environ["JWT_SECRET"], algorithms=["HS256"])
-        if not payload.get("is_admin"):
+        if payload.get("is_admin") != 1:
             return None
         return payload
     except jwt.PyJWTError:
@@ -187,7 +187,7 @@ def handle_list(params, payload):
                 "product_link": r[3], "seller": r[4], "rating": r[5],
                 "review_text": r[6], "status": r[7], "created_at": str(r[8]),
                 "admin_comment": r[9], "moderated_at": str(r[10]) if r[10] else None,
-                "author_name": r[11], "author_avatar": r[12], "telegram_id": r[13], "user_id": r[14],
+                "author_name": r[11], "author_avatar": r[12], "user_id": r[14],
                 "files": files,
                 "images": [f["url"] for f in files],
             })

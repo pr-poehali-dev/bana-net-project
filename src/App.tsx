@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import GoogleCallback from "./pages/GoogleCallback";
-import VkCallback from "./pages/VkCallback";
 import YandexCallback from "./pages/YandexCallback";
 
 const queryClient = new QueryClient();
@@ -21,7 +20,6 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth/google/callback" element={<GoogleCallback />} />
-          <Route path="/auth/vk/callback" element={<VkCallback />} />
           <Route path="/auth/yandex/callback" element={<YandexCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

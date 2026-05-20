@@ -227,7 +227,7 @@ def handle_get(event, payload):
     my_only = params.get("my") == "1"
     marketplace = params.get("marketplace")
     search = sanitize(params.get("search", ""), 200)
-    is_admin = payload.get("is_admin", 0)
+    is_admin = 1 if payload.get("is_admin") == 1 else 0
     user_id = payload.get("user_id")
     review_id = params.get("id")
 
@@ -240,7 +240,7 @@ def handle_get(event, payload):
             cur.execute(
                 f"""SELECT r.id, r.marketplace, r.product_article, r.product_link, r.seller,
                            r.rating, r.review_text, r.status, r.created_at, r.admin_comment, r.moderated_at,
-                           u.name, u.avatar_url, u.telegram_id, r.user_id
+                           u.name, u.avatar_url, NULL, r.user_id
                     FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id
                     WHERE r.id = %s AND (r.user_id = %s OR r.status = 'approved' OR %s = 1)""",
                 (review_id, user_id, is_admin)
@@ -278,7 +278,7 @@ def handle_get(event, payload):
         cur.execute(
             f"""SELECT r.id, r.marketplace, r.product_article, r.product_link, r.seller,
                        r.rating, r.review_text, r.status, r.created_at, r.admin_comment, r.moderated_at,
-                       u.name, u.avatar_url, u.telegram_id, r.user_id
+                       u.name, u.avatar_url, NULL, r.user_id
                 FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id
                 {where} ORDER BY r.created_at DESC LIMIT 100""",
             args,
@@ -483,10 +483,7 @@ def handle_attach_image(event, payload):
     image_url = sanitize(body.get("image_url", ""), 2000)
     is_last = body.get("is_last", False)
 
-    print(f"[attach] user={user_id} review_id={review_id} is_last={is_last} url={image_url[:60] if image_url else None}")
-
     if not review_id or not image_url:
-        print(f"[attach] ERROR: missing review_id or image_url")
         return err("review_id и image_url обязательны")
 
     conn = db()
@@ -573,7 +570,7 @@ def handle_resubmit(event, payload):
 
 def handle_moderate(event, payload):
     """PUT — модерация (только admin). Обновляет статус и пишет лог."""
-    if not payload.get("is_admin"):
+    if payload.get("is_admin") != 1:
         return err("Нет прав", 403)
 
     s = schema()
