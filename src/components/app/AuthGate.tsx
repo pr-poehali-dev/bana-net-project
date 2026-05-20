@@ -5,8 +5,6 @@ import type { AuthUser } from '@/hooks/useAuth';
 import type { Platform } from '@/hooks/usePlatform';
 import { GoogleLoginButton } from '@/components/extensions/google-auth/GoogleLoginButton';
 import { useGoogleAuth } from '@/components/extensions/google-auth/useGoogleAuth';
-import { VkLoginButton } from '@/components/extensions/vk-auth/VkLoginButton';
-import { useVkAuth } from '@/components/extensions/vk-auth/useVkAuth';
 import { YandexLoginButton } from '@/components/extensions/yandex-auth/YandexLoginButton';
 import { useYandexAuth } from '@/components/extensions/yandex-auth/useYandexAuth';
 
@@ -18,13 +16,6 @@ const GOOGLE_API_URLS = {
   logout: `${GOOGLE_AUTH_URL}?action=logout`,
 };
 
-const VK_AUTH_URL = 'https://functions.poehali.dev/895f5597-716b-4457-ace9-96a846ec50aa';
-const VK_API_URLS = {
-  authUrl: `${VK_AUTH_URL}?action=auth-url`,
-  callback: `${VK_AUTH_URL}?action=callback`,
-  refresh: `${VK_AUTH_URL}?action=refresh`,
-  logout: `${VK_AUTH_URL}?action=logout`,
-};
 
 const YANDEX_AUTH_URL = 'https://functions.poehali.dev/c517e076-c443-4b37-a995-026ec12c67ba';
 const YANDEX_API_URLS = {
@@ -113,24 +104,6 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
       }
     },
   });
-  const vkAuth = useVkAuth({
-    apiUrls: VK_API_URLS,
-    onAuthChange: (vkUser) => {
-      if (vkUser && onGoogleLogin) {
-        const accessToken = localStorage.getItem('vk_auth_access_token') || '';
-        const authUser: AuthUser = {
-          id: vkUser.id,
-          name: vkUser.name || 'VK User',
-          avatar_url: vkUser.avatar_url,
-          vk_id: vkUser.vk_id,
-          email: vkUser.email,
-          is_admin: 0,
-          auth_provider: 'vk',
-        };
-        onGoogleLogin(accessToken, authUser);
-      }
-    },
-  });
   const yandexAuth = useYandexAuth({
     apiUrls: YANDEX_API_URLS,
     onAuthChange: (yandexUser) => {
@@ -153,8 +126,8 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-8">
       <div className="max-w-sm w-full text-center">
-        <img src={LOGO_URL} alt="BANaNET" className="w-20 h-20 mx-auto mb-6 rounded-2xl shadow-md" />
-        <h1 className="text-2xl font-bold gradient-text mb-2">BANaNET</h1>
+        <img src={LOGO_URL} alt="BANa.NET" className="w-20 h-20 mx-auto mb-6 rounded-2xl shadow-md" />
+        <h1 className="text-2xl font-bold gradient-text mb-2">BANa.NET</h1>
         <p className="text-muted-foreground text-sm mb-8">
           Платформа для честных отзывов о маркетплейсах
         </p>
@@ -162,28 +135,6 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
         <p className="text-sm font-medium text-gray-700 mb-4">Войдите, чтобы продолжить</p>
 
         <div className="flex flex-col gap-3">
-          {/* Google */}
-          <GoogleLoginButton
-            onClick={googleAuth.login}
-            isLoading={googleAuth.isLoading}
-            className="w-full h-12 text-base"
-          />
-
-          {/* ВКонтакте */}
-          <VkLoginButton
-            onClick={vkAuth.login}
-            isLoading={vkAuth.isLoading}
-            buttonText="Войти через ВКонтакте"
-            className="w-full h-12 text-base"
-          />
-
-          {/* Яндекс */}
-          <YandexLoginButton
-            onClick={yandexAuth.login}
-            isLoading={yandexAuth.isLoading}
-            className="w-full h-12 text-base"
-          />
-
           {/* Telegram Bot */}
           <Button
             variant="outline"
@@ -193,6 +144,20 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
             <Icon name="Send" className="w-5 h-5 mr-2" />
             Войти через Telegram
           </Button>
+
+          {/* Google */}
+          <GoogleLoginButton
+            onClick={googleAuth.login}
+            isLoading={googleAuth.isLoading}
+            className="w-full h-12 text-base"
+          />
+
+          {/* Яндекс */}
+          <YandexLoginButton
+            onClick={yandexAuth.login}
+            isLoading={yandexAuth.isLoading}
+            className="w-full h-12 text-base"
+          />
         </div>
 
         {/* PWA баннер */}
@@ -242,8 +207,8 @@ export default function AuthGate({ loading, error, platform, onGoogleLogin }: Au
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-8">
         <div className="max-w-sm w-full text-center">
-          <img src={LOGO_URL} alt="BANaNET" className="w-20 h-20 mx-auto mb-6 rounded-2xl" />
-          <h1 className="text-2xl font-bold gradient-text mb-2">BANaNET</h1>
+          <img src={LOGO_URL} alt="BANa.NET" className="w-20 h-20 mx-auto mb-6 rounded-2xl" />
+          <h1 className="text-2xl font-bold gradient-text mb-2">BANa.NET</h1>
           <p className="text-muted-foreground text-sm mb-8">
             Платформа для честных отзывов о маркетплейсах
           </p>
