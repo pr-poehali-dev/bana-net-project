@@ -15,7 +15,7 @@ type View = 'home' | 'reviews' | 'search' | 'add' | 'profile' | 'admin' | 'suppo
 
 const Index = () => {
   const { toast } = useToast();
-  const { user, loading: authLoading, loginWithGoogle } = useAuth();
+  const { user, loading: authLoading, logout, loginWithGoogle } = useAuth();
   const { platform } = usePlatform();
 
   const [activeTab, setActiveTab] = useState('all');
@@ -54,6 +54,21 @@ const Index = () => {
     setCurrentView('review-detail');
   };
 
+  const handleDeleteReview = async (reviewId: number) => {
+    try {
+      const res = await apiFetch(`${REVIEWS_URL}?id=${reviewId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast({ title: 'Ошибка', description: d.error || 'Не удалось удалить отзыв', variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Отзыв удалён' });
+      reloadMyReviews();
+    } catch {
+      toast({ title: 'Ошибка', description: 'Не удалось удалить отзыв', variant: 'destructive' });
+    }
+  };
+
   const handleResubmit = (review: Review) => {
     setResubmitData(review);
     setUploadedFiles([]);
@@ -79,6 +94,7 @@ const Index = () => {
     seller: string;
     rating: number;
     review_text: string;
+    is_anonymous?: boolean;
   }) => {
     const logs: string[] = [];
     const log = (msg: string) => { logs.push(msg); setDebugLogs([...logs]); };
@@ -242,6 +258,8 @@ const Index = () => {
           user={user}
           reviews={myReviews}
           onResubmit={handleResubmit}
+          onLogout={logout}
+          onDeleteReview={handleDeleteReview}
         />
       )}
       {currentView === 'admin' && isAdmin && (

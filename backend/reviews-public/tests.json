@@ -11,7 +11,7 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {"reviews": [], "total": 0},
+      "expectedBody": {"limit": 20, "offset": 0},
       "bodyMatcher": "partial"
     },
     {

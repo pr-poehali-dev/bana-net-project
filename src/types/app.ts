@@ -24,6 +24,7 @@ export interface Review {
   user_id: number;
   images: string[];
   admin_comment?: string | null;
+  is_anonymous?: boolean;
 }
 
 export interface ApiUser {

@@ -5,6 +5,7 @@ export interface AddReviewFormData {
   seller: string;
   rating: number;
   review_text: string;
+  is_anonymous?: boolean;
 }
 
 export function isValidUrl(v: string) {

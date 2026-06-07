@@ -89,7 +89,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(
             f"""SELECT r.id, r.marketplace, r.product_article, r.product_link, r.seller,
                        r.rating, r.review_text, r.created_at, r.moderated_at,
-                       u.name, u.avatar_url
+                       u.name, u.avatar_url, r.is_anonymous, r.user_id
                 FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id
                 {where} ORDER BY r.moderated_at DESC NULLS LAST, r.created_at DESC
                 LIMIT %s OFFSET %s""",
@@ -121,7 +121,10 @@ def handler(event: dict, context) -> dict:
             "product_link": r[3], "seller": r[4], "rating": r[5],
             "review_text": r[6], "created_at": str(r[7]),
             "moderated_at": str(r[8]) if r[8] else None,
-            "author_name": r[9], "author_avatar": r[10],
+            "author_name": "Аноним" if r[11] else r[9],
+            "author_avatar": None if r[11] else r[10],
+            "is_anonymous": r[11],
+            "user_id": r[12],
             "images": files_map.get(r[0], []),
         } for r in rows]
 

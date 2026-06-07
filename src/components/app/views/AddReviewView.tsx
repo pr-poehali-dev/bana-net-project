@@ -27,6 +27,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
   const [rating, setRating] = useState(initialData?.rating ?? 0);
   const [reviewText, setReviewText] = useState(initialData?.review_text ?? '');
 
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }));
   const [autofilled, setAutofilled] = useState<Record<string, boolean>>({});
@@ -60,7 +61,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
       !!textError(reviewText) || reviewText.length < 50 ||
       uploadedFiles.length < 2;
     if (hasErrors) return;
-    onSubmit({ marketplace, product_article: productArticle, product_link: productLink, seller, rating, review_text: reviewText });
+    onSubmit({ marketplace, product_article: productArticle, product_link: productLink, seller, rating, review_text: reviewText, is_anonymous: isAnonymous });
   };
 
   return (
@@ -151,6 +152,19 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 touched={touched}
                 touch={touch}
               />
+
+              <div
+                className="flex items-center gap-3 p-3 rounded-lg border border-dashed cursor-pointer select-none hover:bg-muted/40 transition-colors"
+                onClick={() => setIsAnonymous(v => !v)}
+              >
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isAnonymous ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                  {isAnonymous && <Icon name="Check" className="w-3 h-3 text-white" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Опубликовать анонимно</p>
+                  <p className="text-xs text-muted-foreground">Ваше имя и фото не будут отображаться в отзыве</p>
+                </div>
+              </div>
 
               <Button
                 className="w-full gradient-bg h-12 md:h-11 text-base md:text-sm"

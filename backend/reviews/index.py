@@ -216,6 +216,9 @@ def handler(event: dict, context) -> dict:
     if method == "PUT":
         return handle_moderate(event, payload)
 
+    if method == "DELETE":
+        return handle_delete(event, payload)
+
     return err("Метод не поддерживается", 405)
 
 
@@ -240,7 +243,7 @@ def handle_get(event, payload):
             cur.execute(
                 f"""SELECT r.id, r.marketplace, r.product_article, r.product_link, r.seller,
                            r.rating, r.review_text, r.status, r.created_at, r.admin_comment, r.moderated_at,
-                           u.name, u.avatar_url, NULL, r.user_id
+                           u.name, u.avatar_url, NULL, r.user_id, r.is_anonymous
                     FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id
                     WHERE r.id = %s AND (r.user_id = %s OR r.status = 'approved' OR %s = 1)""",
                 (review_id, user_id, is_admin)
@@ -278,7 +281,7 @@ def handle_get(event, payload):
         cur.execute(
             f"""SELECT r.id, r.marketplace, r.product_article, r.product_link, r.seller,
                        r.rating, r.review_text, r.status, r.created_at, r.admin_comment, r.moderated_at,
-                       u.name, u.avatar_url, NULL, r.user_id
+                       u.name, u.avatar_url, NULL, r.user_id, r.is_anonymous
                 FROM {s}reviews r JOIN {s}users u ON u.id = r.user_id
                 {where} ORDER BY r.created_at DESC LIMIT 100""",
             args,
@@ -304,11 +307,15 @@ def handle_get(event, payload):
 
 
 def _row_to_dict(r, files, legacy_images):
+    is_anon = r[15] if len(r) > 15 else False
     return {
         "id": r[0], "marketplace": r[1], "product_article": r[2], "product_link": r[3],
         "seller": r[4], "rating": r[5], "review_text": r[6], "status": r[7],
         "created_at": str(r[8]), "admin_comment": r[9], "moderated_at": str(r[10]) if r[10] else None,
-        "author_name": r[11], "author_avatar": r[12], "telegram_id": r[13], "user_id": r[14],
+        "author_name": "Аноним" if is_anon else r[11],
+        "author_avatar": None if is_anon else r[12],
+        "telegram_id": r[13], "user_id": r[14],
+        "is_anonymous": is_anon,
         "files": files,
         "images": [f["url"] for f in files] + legacy_images,
     }
@@ -326,6 +333,7 @@ def handle_create(event, payload):
     product_article = sanitize(body.get("product_article", ""), 255) or None
     product_link = sanitize(body.get("product_link", ""), 2000) or None
     seller = sanitize(body.get("seller", ""), 255) or None
+    is_anonymous = bool(body.get("is_anonymous", False))
 
     if not marketplace or not review_text or not rating:
         return err("marketplace, review_text и rating обязательны")
@@ -342,10 +350,10 @@ def handle_create(event, payload):
         cur = conn.cursor()
         cur.execute(
             f"""INSERT INTO {s}reviews
-                (user_id, marketplace, product_article, product_link, seller, rating, review_text, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 'draft')
+                (user_id, marketplace, product_article, product_link, seller, rating, review_text, status, is_anonymous)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'draft', %s)
                 RETURNING id""",
-            (user_id, marketplace, product_article, product_link, seller, rating, review_text),
+            (user_id, marketplace, product_article, product_link, seller, rating, review_text, is_anonymous),
         )
         review_id = cur.fetchone()[0]
         conn.commit()
@@ -616,5 +624,37 @@ def handle_moderate(event, payload):
             send_push_to_user(row[2], review_id, status, row[0], admin_comment)
 
         return ok({"ok": True, "status": status, "review_id": review_id})
+    finally:
+        conn.close()
+
+
+def handle_delete(event, payload):
+    """DELETE — удаление своего отзыва пользователем (только pending/draft/rejected)."""
+    s = schema()
+    user_id = payload["user_id"]
+    params = event.get("queryStringParameters") or {}
+    review_id = params.get("id")
+
+    if not review_id:
+        return err("id обязателен")
+
+    conn = db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id, status FROM {s}reviews WHERE id = %s AND user_id = %s",
+            (review_id, user_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            return err("Отзыв не найден", 404)
+        if row[1] == "approved" and payload.get("is_admin") != 1:
+            return err("Опубликованный отзыв нельзя удалить", 403)
+
+        cur.execute(f"DELETE FROM {s}review_files WHERE review_id = %s", (review_id,))
+        cur.execute(f"DELETE FROM {s}review_images WHERE review_id = %s", (review_id,))
+        cur.execute(f"DELETE FROM {s}reviews WHERE id = %s AND user_id = %s", (review_id, user_id))
+        conn.commit()
+        return ok({"ok": True})
     finally:
         conn.close()

@@ -15,11 +15,14 @@ interface ProfileViewProps {
   user: { id: number; name: string; avatar_url: string | null; telegram_id?: string } | null;
   reviews: Review[];
   onResubmit?: (review: Review) => void;
+  onLogout?: () => void;
+  onDeleteReview?: (reviewId: number) => void;
 }
 
-export function ProfileView({ user, reviews, onResubmit }: ProfileViewProps) {
+export function ProfileView({ user, reviews, onResubmit, onLogout, onDeleteReview }: ProfileViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [openReview, setOpenReview] = useState<Review | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const push = usePushNotifications(user?.id ?? null);
 
   const publishedCount = reviews.filter(r => r.status === 'approved').length;
@@ -81,6 +84,19 @@ export function ProfileView({ user, reviews, onResubmit }: ProfileViewProps) {
                 </Avatar>
                 <CardTitle className="text-base">{user?.name || 'Пользователь'}</CardTitle>
                 <CardDescription>{user?.telegram_id ? `@${user.telegram_id}` : 'Пользователь'}</CardDescription>
+                {onLogout && (
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs h-8 text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={onLogout}
+                    >
+                      <Icon name="LogOut" className="w-3.5 h-3.5 mr-1.5" />
+                      Выйти из аккаунта
+                    </Button>
+                  </div>
+                )}
                 {push.isSupported && (
                   <div className="mt-3">
                     {push.isSubscribed ? (
@@ -187,12 +203,14 @@ export function ProfileView({ user, reviews, onResubmit }: ProfileViewProps) {
                   {filtered.map((review) => (
                     <div
                       key={review.id}
-                      className={`p-4 border rounded-lg cursor-pointer hover:shadow-sm transition-shadow ${
-                        review.status === 'rejected' ? 'border-destructive/40 bg-destructive/5 hover:bg-destructive/10' : 'hover:bg-muted/30'
+                      className={`p-4 border rounded-lg transition-shadow ${
+                        review.status === 'rejected' ? 'border-destructive/40 bg-destructive/5' : ''
                       }`}
-                      onClick={() => setOpenReview(review)}
                     >
-                      <div className="flex items-start gap-3">
+                      <div
+                        className="flex items-start gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setOpenReview(review)}
+                      >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <Badge variant={statusVariant(review.status)} className="text-xs">
@@ -217,6 +235,41 @@ export function ProfileView({ user, reviews, onResubmit }: ProfileViewProps) {
                         </div>
                         <Icon name="ChevronRight" className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
                       </div>
+                      {onDeleteReview && review.status !== 'approved' && (
+                        <div className="mt-3 pt-3 border-t flex justify-end">
+                          {deletingId === review.id ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Удалить отзыв?</span>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-7 text-xs"
+                                onClick={() => { onDeleteReview(review.id); setDeletingId(null); }}
+                              >
+                                Да, удалить
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs"
+                                onClick={() => setDeletingId(null)}
+                              >
+                                Отмена
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeletingId(review.id)}
+                            >
+                              <Icon name="Trash2" className="w-3.5 h-3.5 mr-1" />
+                              Удалить
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
