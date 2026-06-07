@@ -90,6 +90,10 @@ const Index = () => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const replaceFile = (index: number, file: File) => {
+    setUploadedFiles(prev => prev.map((f, i) => (i === index ? file : f)));
+  };
+
   const handleSubmitReview = async (formData: {
     marketplace: string;
     product_article: string;
@@ -244,6 +248,7 @@ const Index = () => {
           uploadedFiles={uploadedFiles}
           onFileUpload={handleFileUpload}
           onRemoveFile={removeFile}
+          onReplaceFile={replaceFile}
           onSubmit={handleSubmitReview}
           submitting={submitting}
           initialData={resubmitData ? {

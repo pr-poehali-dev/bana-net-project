@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,6 +6,7 @@ import { CardDescription } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Icon from '@/components/ui/icon';
 import { sellerError, textError, mentionsSellerInText } from './addReviewHelpers';
+import { ImageEditor } from '@/components/app/ImageEditor';
 
 interface ReviewContentFieldsProps {
   seller: string;
@@ -17,6 +18,7 @@ interface ReviewContentFieldsProps {
   uploadedFiles: File[];
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFile: (index: number) => void;
+  onReplaceFile: (index: number, file: File) => void;
   touched: Record<string, boolean>;
   touch: (field: string) => void;
 }
@@ -46,20 +48,82 @@ function InfoPopover({ children, side = 'top' }: { children: React.ReactNode; si
   );
 }
 
+function FilePreview({ file, index, onRemove, onEdit }: {
+  file: File;
+  index: number;
+  onRemove: () => void;
+  onEdit: () => void;
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return (
+    <div className="relative group rounded-lg overflow-hidden border border-border bg-muted aspect-square">
+      {preview ? (
+        <img src={preview} alt={file.name} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <Icon name="Image" className="w-8 h-8 text-muted-foreground" />
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="p-2 bg-white/90 rounded-full text-gray-800 hover:bg-white transition-colors"
+          title="Редактировать"
+        >
+          <Icon name="Pencil" className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="p-2 bg-white/90 rounded-full text-destructive hover:bg-white transition-colors"
+          title="Удалить"
+        >
+          <Icon name="Trash2" className="w-4 h-4" />
+        </button>
+      </div>
+      {/* Номер файла */}
+      <div className="absolute top-1.5 left-1.5 bg-black/50 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+        {index + 1}
+      </div>
+    </div>
+  );
+}
+
 export function ReviewContentFields({
   seller, setSeller,
   rating, setRating,
   reviewText, setReviewText,
-  uploadedFiles, onFileUpload, onRemoveFile,
+  uploadedFiles, onFileUpload, onRemoveFile, onReplaceFile,
   touched, touch,
 }: ReviewContentFieldsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sellerRequired = mentionsSellerInText(reviewText);
   const sErr = sellerError(seller, sellerRequired);
   const tErr = textError(reviewText);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   return (
     <>
+      {/* Редактор фото */}
+      {editingIndex !== null && uploadedFiles[editingIndex] && (
+        <ImageEditor
+          file={uploadedFiles[editingIndex]}
+          onSave={edited => {
+            onReplaceFile(editingIndex, edited);
+            setEditingIndex(null);
+          }}
+          onClose={() => setEditingIndex(null)}
+        />
+      )}
+
       {/* Продавец */}
       <div>
         <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
@@ -161,30 +225,46 @@ export function ReviewContentFields({
           className="hidden"
           onChange={onFileUpload}
         />
-        <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-6 md:p-8 text-center cursor-pointer hover:border-primary transition-colors"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Icon name="Upload" className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-xs md:text-sm text-muted-foreground">1. Скриншот отклонённого отзыва из личного кабинета</p>
-          <p className="text-xs md:text-sm text-muted-foreground">2. Фотография купленного товара</p>
-          <p className="text-xs text-muted-foreground mt-2">Нажмите для выбора файлов</p>
-        </div>
 
+        {/* Превью загруженных фото */}
         {uploadedFiles.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {uploadedFiles.map((file, index) => (
-              <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-                <Icon name="Image" className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="text-sm truncate flex-1">{file.name}</span>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onRemoveFile(index)}>
-                  <Icon name="X" className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground">
-              Загружено: {uploadedFiles.length} из минимум 2
+          <div className="mb-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {uploadedFiles.map((file, index) => (
+                <FilePreview
+                  key={`${file.name}-${index}`}
+                  file={file}
+                  index={index}
+                  onRemove={() => onRemoveFile(index)}
+                  onEdit={() => setEditingIndex(index)}
+                />
+              ))}
+              {/* Кнопка добавить ещё */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                <Icon name="Plus" className="w-6 h-6" />
+                <span className="text-xs">Добавить</span>
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {uploadedFiles.length} фото · Нажмите на фото чтобы обрезать или замазать данные
             </p>
+          </div>
+        )}
+
+        {/* Зона загрузки (если файлов нет) */}
+        {uploadedFiles.length === 0 && (
+          <div
+            className="border-2 border-dashed border-gray-300 rounded-lg p-6 md:p-8 text-center cursor-pointer hover:border-primary transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Icon name="Upload" className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-xs md:text-sm text-muted-foreground">1. Скриншот отклонённого отзыва из личного кабинета</p>
+            <p className="text-xs md:text-sm text-muted-foreground">2. Фотография купленного товара</p>
+            <p className="text-xs text-muted-foreground mt-2">Нажмите для выбора файлов</p>
           </div>
         )}
       </div>

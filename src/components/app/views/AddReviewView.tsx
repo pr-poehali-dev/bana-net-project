@@ -13,13 +13,14 @@ interface AddReviewViewProps {
   uploadedFiles: File[];
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFile: (index: number) => void;
+  onReplaceFile: (index: number, file: File) => void;
   onSubmit: (data: AddReviewFormData) => void;
   submitting: boolean;
   userId: number | null;
   initialData?: Partial<AddReviewFormData>;
 }
 
-export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSubmit, submitting, userId, initialData }: AddReviewViewProps) {
+export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onReplaceFile, onSubmit, submitting, userId, initialData }: AddReviewViewProps) {
   const [marketplace, setMarketplace] = useState(initialData?.marketplace ?? '');
   const [productArticle, setProductArticle] = useState(initialData?.product_article ?? '');
   const [productLink, setProductLink] = useState(initialData?.product_link ?? '');
@@ -149,6 +150,7 @@ export function AddReviewView({ uploadedFiles, onFileUpload, onRemoveFile, onSub
                 uploadedFiles={uploadedFiles}
                 onFileUpload={onFileUpload}
                 onRemoveFile={onRemoveFile}
+                onReplaceFile={onReplaceFile}
                 touched={touched}
                 touch={touch}
               />
