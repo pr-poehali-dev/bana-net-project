@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ interface LightboxProps {
 
 function Lightbox({ images, startIndex, onClose }: LightboxProps) {
   const [current, setCurrent] = useState(startIndex);
+  const touchStartX = useRef<number | null>(null);
 
   const prev = useCallback(() => setCurrent(i => (i - 1 + images.length) % images.length), [images.length]);
   const next = useCallback(() => setCurrent(i => (i + 1) % images.length), [images.length]);
@@ -30,10 +31,25 @@ function Lightbox({ images, startIndex, onClose }: LightboxProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, prev, next]);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(delta) < 40) return;
+    if (delta < 0) next();
+    else prev();
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
       onClick={onClose}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <button
         className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"

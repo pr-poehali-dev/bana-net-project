@@ -8,6 +8,7 @@ import { ReviewDetail } from '@/components/app/ReviewCard';
 import { HomeView, ReviewsView, SearchView, AddReviewView, ProfileView, AdminView, SupportView } from '@/components/app/AppViews';
 import AuthGate from '@/components/app/AuthGate';
 import { usePlatform } from '@/hooks/usePlatform';
+import { useAppHistory } from '@/hooks/useAppHistory';
 
 const LOGO_URL = 'https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/98f97b9b-13cb-4716-b813-29f161b52964.png';
 
@@ -48,6 +49,8 @@ const Index = () => {
     setCurrentView(view);
     setMobileMenuOpen(false);
   };
+
+  useAppHistory(currentView, handleNavigation);
 
   const openReviewDetail = (review: Review) => {
     setSelectedReview(review);
