@@ -6,7 +6,7 @@ const IMG_APP_MOCKUP =
 const IMG_HOW_IT_WORKS =
   "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/ebf82d82-8743-47a3-98b3-2a3f3539b3a4.jpg";
 const IMG_PROBLEM =
-  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/50666943-6b64-425a-bbec-fa372c2959c4.jpg";
+  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/e9fad07e-2ab4-40d6-bdec-66abaff0df83.jpg";
 
 const STEPS = [
   {
@@ -346,7 +346,10 @@ export function LandingContent({ onLoginClick }: LandingContentProps) {
       </section>
 
       {/* Отступ снизу — на мобиле больше из-за floating кнопки */}
-      <div className="h-8 lg:h-8" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} />
+      <div
+        className="h-8 lg:h-8"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      />
       <div className="h-20 lg:hidden" />
     </div>
   );
