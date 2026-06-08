@@ -2,11 +2,11 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 
 const IMG_APP_MOCKUP =
-  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/files/b1612dd1-30dd-4885-8a42-061117d607be.jpg";
+  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/50666943-6b64-425a-bbec-fa372c2959c4.jpg";
 const IMG_HOW_IT_WORKS =
-  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/files/b4993608-f277-4eb3-8c0f-218ff8c083cd.jpg";
+  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/ebf82d82-8743-47a3-98b3-2a3f3539b3a4.jpg";
 const IMG_PROBLEM =
-  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/files/838a191a-1e94-4979-ac98-eab3e17124fb.jpg";
+  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/50666943-6b64-425a-bbec-fa372c2959c4.jpg";
 
 const STEPS = [
   {
@@ -345,8 +345,9 @@ export function LandingContent({ onLoginClick }: LandingContentProps) {
         </div>
       </section>
 
-      {/* Отступ снизу */}
-      <div className="h-8" />
+      {/* Отступ снизу — на мобиле больше из-за floating кнопки */}
+      <div className="h-8 lg:h-8" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} />
+      <div className="h-20 lg:hidden" />
     </div>
   );
 }

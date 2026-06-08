@@ -185,9 +185,20 @@ function AuthForm({ onGoogleLogin, formRef }: {
 
 function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoogleLogin'] }) {
   const formRef = useRef<HTMLDivElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [highlight, setHighlight] = useState(false);
 
-  const scrollToForm = () => {
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const handleLoginClick = () => {
+    // Мобайл — открываем bottom sheet
+    const isMobile = window.innerWidth < 1024;
+    if (isMobile) {
+      setSheetOpen(true);
+    } else {
+      // Десктоп — подсвечиваем форму справа
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlight(true);
+      setTimeout(() => setHighlight(false), 1200);
+    }
   };
 
   return (
@@ -197,31 +208,57 @@ function WebAuthScreen({ onGoogleLogin }: { onGoogleLogin?: AuthGateProps['onGoo
         {/* Левый — лендинг, скроллится */}
         <div className="flex-1 overflow-y-auto border-r border-gray-100 bg-gray-50/40">
           <div className="max-w-2xl mx-auto px-8 xl:px-12">
-            <LandingContent onLoginClick={scrollToForm} />
+            <LandingContent onLoginClick={handleLoginClick} />
           </div>
         </div>
 
         {/* Правый — форма, фиксированная */}
         <div className="w-[420px] flex-shrink-0 flex items-center justify-center px-10 sticky top-0 h-screen overflow-y-auto">
-          <div className="w-full max-w-sm">
-            <AuthForm onGoogleLogin={onGoogleLogin} formRef={formRef} />
+          <div
+            ref={formRef}
+            className={`w-full max-w-sm rounded-2xl transition-all duration-300 p-1 ${highlight ? 'ring-4 ring-primary/40 shadow-2xl scale-[1.02]' : ''}`}
+          >
+            <AuthForm onGoogleLogin={onGoogleLogin} />
           </div>
         </div>
       </div>
 
-      {/* ── МОБАЙЛ: лендинг сверху, форма ниже ── */}
+      {/* ── МОБАЙЛ: лендинг, форма всплывает снизу ── */}
       <div className="lg:hidden">
-        {/* Форма вверху — компактная, всегда видна */}
-        <div className="px-6 py-8 border-b border-gray-100 bg-white">
-          <div className="max-w-sm mx-auto" ref={formRef}>
-            <AuthForm onGoogleLogin={onGoogleLogin} />
+        {/* Лендинг */}
+        <div className="px-5 bg-white">
+          <LandingContent onLoginClick={handleLoginClick} />
+        </div>
+
+        {/* Floating CTA — всегда видна внизу экрана */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 px-4" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="pb-4 pt-3 bg-white/95 backdrop-blur-sm border-t border-gray-100">
+            <button
+              onClick={handleLoginClick}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl gradient-bg text-white font-bold text-base shadow-xl hover:opacity-90 transition-opacity"
+            >
+              <Icon name="LogIn" className="w-5 h-5" />
+              Войти и опубликовать отзыв
+            </button>
           </div>
         </div>
 
-        {/* Лендинг ниже */}
-        <div className="px-5 bg-white">
-          <LandingContent onLoginClick={scrollToForm} />
-        </div>
+        {/* Bottom Sheet — форма входа */}
+        {sheetOpen && (
+          <>
+            {/* Оверлей */}
+            <div
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+              onClick={() => setSheetOpen(false)}
+            />
+            {/* Sheet */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl px-6 pt-4 pb-8 animate-in slide-in-from-bottom duration-300">
+              {/* Ручка */}
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-6" />
+              <AuthForm onGoogleLogin={onGoogleLogin} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
