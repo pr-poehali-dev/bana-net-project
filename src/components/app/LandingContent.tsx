@@ -4,7 +4,7 @@ import Icon from "@/components/ui/icon";
 const IMG_APP_MOCKUP =
   "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/50666943-6b64-425a-bbec-fa372c2959c4.jpg";
 const IMG_HOW_IT_WORKS =
-  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/ebf82d82-8743-47a3-98b3-2a3f3539b3a4.jpg";
+  "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/7468d037-bc1a-4c97-8913-893f892fce31.jpg";
 const IMG_PROBLEM =
   "https://cdn.poehali.dev/projects/4402d97e-15af-4062-b89e-5d5fc4618802/bucket/e9fad07e-2ab4-40d6-bdec-66abaff0df83.jpg";
 
